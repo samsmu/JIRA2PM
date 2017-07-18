@@ -56,6 +56,11 @@ function cleanSheetAndSendRequest() {
   sendRequest();
 }
 
+function sendRequestAndInsertToNew() {
+  sheet = SpreadsheetApp.getActiveSpreadsheet().insertSheet();
+  fetchJira_();
+}
+
 function getCurrentRangeValues() {
   var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
   return JSON.stringify(sheet.getActiveRange().getValues());
@@ -69,11 +74,6 @@ function convertKeysToLinks(keysJSON) {
     throw ("No connection options were found. Please connect to JIRA first");
   
   return connectOptions.baseURL + "issues/?jql=key%20in%20(" + encodeURIComponent(keys.join()) + ")";
-}
-
-function sendRequestAndInsertToNew() {
-  sheet = SpreadsheetApp.getActiveSpreadsheet().insertSheet();
-  fetchJira_();
 }
 
 function getConnectPreferences() {
@@ -412,6 +412,8 @@ function formatValue(value, format) {
       }
     case 'text':
       return '"' + value + '"';
+    case 'textcap':
+      return '"' + value.substring(0,50000) + '"';
     case 'array':
       return value;
     case 'sprint':
