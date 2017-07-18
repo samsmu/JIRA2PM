@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <link rel="stylesheet" href="https://ssl.gstatic.com/docs/script/css/add-ons1.css">
+    <!-- The CSS package above applies Google styling to buttons and other elements. -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link href="https://jira2pm.appspot.com/styles/main.css" rel="stylesheet">
+   
+  </head>
+  <body>
+    <div class="sidebar branding-below">
+      <form id="mainform">
+        <div class="form-group">
+          <label for="username">JIRA Username</label>
+          <input type="text" class="form-control" id="username">
+        </div>
+        
+        <div class="form-group">
+          <label for="password">JIRA Password</label>
+          <input type="password" class="form-control" id="password">
+        </div>
+        
+        <div class="form-group">
+          <label for="baseURL">Base URL</label>
+          <input type="text" class="form-control" id="baseURL" placeholder="https://example.atlassian.net/">
+        </div>
+        <div id="fields-required">
+          <i class="material-icons pull-left">warning</i>
+          <div class="pull-left text">All fields are required</div>
+        </div>
+      </form>
+      
+      <div class="spacer"></div>
+      <div class="form-group">
+        <button class="blue btn-block" id="connect" form="mainform">     
+          <div class="title">Connect</div>
+        </button>
+        <div id="success-text">Connected!</div>
+      </div>
+      
+      <div id="error-bar">
+      </div>
+      
+    </div>
+    
+    <div class="sidebar bottom">  
+      <button class="blue btn-block pull-right" id="next">     
+        <div class="title">2. Build JQL Query</div>
+        <div class="right-arrow"></div>
+      </button>
+    </div>
+
+
+    <script>
+      /**
+       * On document load, assign click handlers to each button and try to load the
+       * user's preferences if previously set.
+       */
+      $(function() {
+        $('#connect').click(runConnect);
+        $('#next').click(function() {
+          this.disabled = true;
+          google.script.run.withUserObject(this).showBuildJqlQuery();
+        });
+        google.script.run.withSuccessHandler(loadPreferences)
+            .withFailureHandler(showError).getConnectPreferences();
+        initFieldsCheck();
+      });
+      /**
+       * Callback function that populates input fields.
+       */
+      function loadPreferences(userPrefs) {
+        var options = JSON.parse(userPrefs);
+        $('#username').val(options.username);
+        $('#baseURL').val(options.baseURL);
+      }
+
+      /**
+       * Runs a server-side function to translate the user-selected text and update
+       * the sidebar UI with the resulting translation.
+       */
+      function runConnect() { 
+        this.disabled = true;
+      
+        $('#error').remove();
+        var options = {};
+        options.username = $('#username').val();
+        options.password = $('#password').val();
+        options.baseURL = $('#baseURL').val();
+        
+        var localOptions = {};
+        var num = 0.1;
+        localOptions.decimalSeparator = num.toLocaleString().replace(/\d/g, '');
+        
+        google.script.run
+            .withSuccessHandler(
+              function(msg, element) {
+                $('#connect').fadeOut("fast", function() {$('#success-text').fadeIn("fast");});
+              })
+            .withFailureHandler(
+              function(msg, element) {
+                showError(msg, $('#error-bar'));
+                element.disabled = false;
+              })
+            .withUserObject(this)
+            .connectJira(JSON.stringify(options), JSON.stringify(localOptions));
+      }
+
+      /**
+       * Inserts a div that contains an error message after a given element.
+       *
+       * @param msg The error message to display.
+       * @param element The element after which to display the error.
+       */
+      function showError(msg, element) {
+        stopProgressBar()
+        var div = $('<div id="error" class="error">' + msg + '</div>');
+        $(element).after(div);
+      }
+      
+      function initFieldsCheck() {
+        $('.form-group input').keyup(function() {
+          var empty = false;
+          $('.form-group input').each(function() {
+            if ($(this).val() == '') 
+              empty = true;
+          });
+          
+          $('#connect').prop('disabled', empty);
+          if (empty)
+            $('#fields-required').show();
+          else
+            $('#fields-required').hide();
+        });
+        
+        $('.form-group input').keyup();
+      }
+    </script>
+  </body>
+</html>
+

@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <link rel="stylesheet" href="https://ssl.gstatic.com/docs/script/css/add-ons1.css">
+    <!-- The CSS package above applies Google styling to buttons and other elements. -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css?family=Roboto" rel="stylesheet">
+    <link href="https://jira2pm.appspot.com/styles/main.css" rel="stylesheet">
+  </head>
+  <body>
+    <div class="sidebar branding-below">
+      <form id="mainform">
+        <div class="panel panel-default">
+          <div class="panel-heading">JQL Query</div>
+          <div id="jqlQuery" class="panel-body">
+            <div class="form-group">
+              <textarea class="form-control" rows="5" id="jql"></textarea>
+            </div>
+          </div>
+        </div>
+        
+        <div id='title'>
+          <div class="pull-left">Fields to Show</div>
+          <div class="pull-right">
+            <input class="magic-checkbox" type="checkbox" name="layout" id="selectAll" value="selectAll">
+            <label class="pull-left" for="selectAll"></label>
+            <label class="pull-left text" for="selectAll">Select All</label>
+          </div>
+          <div class="spacer"></div>
+        </div>
+        
+        <div class="panel panel-default">
+          <div class="panel-heading">General</div>
+          <div class="panel-body">
+            <div class="fields2fetch" id="general">
+            </div>
+          </div>
+        </div>
+        
+        <div class="panel panel-default">
+          <div class="panel-heading">Scope</div>
+          <div class="panel-body">
+            <div class="fields2fetch" id="scope">
+            </div>
+          </div>
+        </div>
+        
+        <div class="panel panel-default">
+          <div class="panel-heading">Estimation</div>
+          <div class="panel-body">
+            <div class="fields2fetch" id="estimation">
+            </div>
+          </div>
+        </div>
+        
+        <div class="panel panel-default">
+          <div class="panel-heading">Sub-Tasks</div>
+          <div class="panel-body">
+            <div class="fields2fetch" id="sub-tasks">
+            </div>
+          </div>
+        </div>
+        
+        <div class="panel panel-default">
+          <div class="panel-heading">Version Control</div>
+          <div class="panel-body">
+            <div class="fields2fetch" id="version-control">
+            </div>
+          </div>
+        </div>
+        
+      </form>
+      
+      <div id="error-bar">
+      </div>
+      
+      
+    </div>
+
+   <div class="sidebar bottom">
+     <button class="white btn-block pull-left" id="back">
+       <div class="title">1 Connect to JIRA</div>
+       <div class="left-arrow"></div>
+     </button>
+     <button class="blue btn-block pull-right" id="next">
+       <div class="title">3 Select Display Option</div>
+       <div class="right-arrow"></div>
+     </button>
+   </div>
+
+    <script>
+      /**
+       * On document load, assign click handlers to each button and try to load the
+       * user's preferences if previously set.
+       */
+      $(function() {
+        createCheckBoxes();
+        
+        google.script.run.withSuccessHandler(loadPreferences)
+            .withFailureHandler(showError).getJqlPreferences();
+        
+        $('#next').click(function() {
+          this.disabled = true;
+          google.script.run.withUserObject(this).showDisplayOptions();
+        });
+        
+        $('#back').click(function() {
+          this.disabled = true;
+          google.script.run.withUserObject(this).showConnectToJira();
+        });
+        
+        init();
+        
+        $('.panel-heading').click(function() {
+          $(this).parent().find('.panel-body').slideToggle(500);
+          $(this).toggleClass('active');
+        });
+      });
+      /**
+       * Callback function that populates input fields.
+       */
+      function loadPreferences(userPrefs) {
+        var options = JSON.parse(userPrefs);
+        $('#jql').val(options.jql);
+      
+        for (var i = 0, len = options.fields.length; i < len; i++) 
+          $("input[type=checkbox][value=" + options.fields[i].replace(/\./g,"\\.").replace(/\|/g,"\\|") + "]").prop("checked",true);
+          
+        // Initialize selectAll state
+        var inputsCount = $(".fields2fetch input").length;
+        var checkedCount = $(".fields2fetch input:checkbox:checked").length;
+        $("#selectAll").prop("checked",checkedCount == inputsCount)
+      }
+
+      /**
+       * Runs a server-side function to translate the user-selected text and update
+       * the sidebar UI with the resulting translation.
+       */
+      function saveJql() { 
+        $('#error').remove();
+        var options = {};
+        options.jql = $('#jql').val();
+        
+        options.fields = getFields2Fetch();
+        options.fieldsNames = getFieldsNames();
+        
+        google.script.run
+            .withFailureHandler(
+              function(msg, element) {
+                showError(msg, $('#error-bar'));
+              })
+            .withUserObject(this)
+            .saveJqlOptions(JSON.stringify(options));
+      }
+
+      /**
+       * Inserts a div that contains an error message after a given element.
+       *
+       * @param msg The error message to display.
+       * @param element The element after which to display the error.
+       */
+      function showError(msg, element) {
+        stopProgressBar()
+        var div = $('<div id="error" class="error">' + msg + '</div>');
+        $(element).after(div);
+      }
+      
+      function getFields2Fetch() {
+        return $(".fields2fetch input:checkbox:checked").map(function(){
+          return $(this).val();
+        }).get();
+      }
+      
+      function getFieldsNames() {
+        return $(".fields2fetch input:checkbox:checked").map(function(){
+          return $(this).next().next(".text").text();
+        }).get();
+      }
+      
+      function createCheckBoxes() {
+        var generalDictionary = {
+          "Key": "key|key",
+          "Type": "fields.issuetype.name",
+          "Summary": "fields.summary",
+          "Priority": "fields.priority.name",
+          "Status": "fields.status.name",
+          "Assignee": "user|fields.assignee.displayName",
+          "Reporter": "user|fields.reporter.displayName",
+          "Resolution Date": "date|fields.resolutiondate",
+          "Created": "date|fields.created",
+          "Due Date": "date|fields.duedate",
+          "Resolution Date": "date|fields.resolutiondate",
+        }
+        
+        var scopeDictionary = {
+          "Sprint": "sprint|fields.customfield_10006",
+          "Fix Version/s": "text|fields.fixVersions.name",
+          "Affected Version/s": "text|fields.versions.name",
+          "Labels": "array|fields.labels",
+          "Components": "fields.components.name",
+          "Epic": "key|fields.customfield_10007",
+          "Epic Summary": "epic|fields.customfield_10007",
+        }
+        
+        var estimationDictionary = {
+          "? Original Estimate": "duration|fields.aggregatetimeoriginalestimate",
+          "? Time Spent": "duration|fields.aggregatetimespent",
+          "? Remaining Estimate": "duration|fields.aggregatetimeestimate",
+          "Original Estimate": "duration|fields.timeoriginalestimate",
+          "Time Spent": "duration|fields.timespent",
+          "Remaining Estimate": "duration|fields.timeestimate",
+        }
+        
+        var subTasksDictionary = {
+          "Parent Key": "key|fields.parent.key",
+          "Parent Summary": "fields.parent.fields.summary",
+        }
+        
+        var versionControlDictionary = {
+          "Pull Request": "prLink|id",
+        }
+        
+        var checkList = $('#general.fields2fetch');
+        for (var key in generalDictionary) 
+          createCheckBox(key, generalDictionary[key], checkList);
+          
+        checkList = $('#scope.fields2fetch');
+        for (var key in scopeDictionary) 
+          createCheckBox(key, scopeDictionary[key], checkList);
+          
+        checkList = $('#estimation.fields2fetch');
+        for (var key in estimationDictionary) 
+          createCheckBox(key, estimationDictionary[key], checkList);
+          
+        checkList = $('#sub-tasks.fields2fetch');
+        for (var key in subTasksDictionary) 
+          createCheckBox(key, subTasksDictionary[key], checkList);
+          
+        checkList = $('#version-control.fields2fetch');
+        for (var key in versionControlDictionary) 
+          createCheckBox(key, versionControlDictionary[key], checkList);
+      }
+      
+      function createCheckBox(key, value, checkList) {
+         var id = value.replace(".", "_");
+         var checkbox = $('<input class="magic-checkbox" type="checkbox" name="layout" id="' + id + '" value="' + value + '">');
+         $(checkList).append(checkbox);
+         checkbox = $('<label class="pull-left" for="' + id + '"></label>');
+         $(checkList).append(checkbox);
+         checkbox = $('<label class="pull-left text" for="' + id + '">' + key + '</label>');
+         $(checkList).append(checkbox);
+         checkbox = $('<div class="spacer"></div>');
+         $(checkList).append(checkbox);
+      }
+      
+      function init() {
+        // Select all 
+        $("#selectAll").change(function() {
+          $(".fields2fetch input").prop("checked", this.checked);
+          saveJql();
+        });
+        
+        $('#jql').keyup(function(){saveJql()});
+        
+        // Change select all when selecting/deselecting item in list
+        var inputsCount = $(".fields2fetch input").length;
+        
+        $(".fields2fetch input").change(function() {
+          var checkedCount = $(".fields2fetch input:checkbox:checked").length;
+          $("#selectAll").prop("checked",checkedCount == inputsCount)
+          saveJql();
+        });
+      }
+    </script>
+  </body>
+</html>
+

@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <link rel="stylesheet" href="https://ssl.gstatic.com/docs/script/css/add-ons1.css">
+    <!-- The CSS package above applies Google styling to buttons and other elements. -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css?family=Roboto" rel="stylesheet">
+    <link href="https://jira2pm.appspot.com/styles/main.css" rel="stylesheet">
+  </head>
+  <body>
+    <div class="sidebar branding-below">
+      <form id="mainform">                 
+        
+        
+        <div class="panel panel-default">
+          <div class="panel-heading">Fields Displayed as Hyperlinks</div>
+          <div id="asLinks" class="panel-body">
+            
+            <div class="form-group">
+              <input class="magic-checkbox" type="checkbox" name="layout" id="key" value="Key">
+              <label class="pull-left" for="key"></label>
+              <label class="pull-left text" for="key">Key</label>
+              <div class="spacer"></div>
+            </div>
+            
+            <div class="form-group">
+              <input class="magic-checkbox" type="checkbox" name="layout" id="sprint" value="Sprint">
+              <label class="pull-left" for="sprint"></label>
+              <label class="pull-left text" for="sprint">Sprint</label>
+              <div class="spacer"></div>
+            </div>
+            
+            <div class="form-group">
+              <input class="magic-checkbox" type="checkbox" name="layout" id="components" value="Components">
+              <label class="pull-left" for="components"></label>
+              <label class="pull-left text" for="components">Components</label>
+              <div class="spacer"></div>
+            </div>
+            
+            <div class="form-group">
+              <input class="magic-checkbox" type="checkbox" name="layout" id="labels" value="Labels">
+              <label class="pull-left" for="labels"></label>
+              <label class="pull-left text" for="labels">Labels</label>
+              <div class="spacer"></div>
+            </div>
+            
+            <div class="form-group">
+              <input class="magic-checkbox" type="checkbox" name="layout" id="fixed-version" value="Fix Version/s">
+              <label class="pull-left" for="fixed-version"></label>
+              <label class="pull-left text" for="fixed-version">Fix Version</label>
+              <div class="spacer"></div>
+            </div>
+            
+            <div class="form-group">
+              <input class="magic-checkbox" type="checkbox" name="layout" id="affected-version" value="Affected Version/s">
+              <label class="pull-left" for="affected-version"></label>
+              <label class="pull-left text" for="affected-version">Affected Version</label>
+              <div class="spacer"></div>
+            </div>
+            
+            <div class="form-group">
+              <input class="magic-checkbox" type="checkbox" name="layout" id="epic" value="Epic">
+              <label class="pull-left" for="epic"></label>
+              <label class="pull-left text" for="epic">Epic</label>
+              <div class="spacer"></div>
+            </div>
+            
+            <div class="form-group">
+              <input class="magic-checkbox" type="checkbox" name="layout" id="parent" value="Parent Key">
+              <label class="pull-left" for="parent"></label>
+              <label class="pull-left text" for="parent">Parent</label>
+              <div class="spacer"></div>
+            </div>
+            
+          </div>
+        </div>
+        
+        <div class="form-group">
+          <label for="dateformat">Date Format</label>
+          <input type="text" class="form-control" id="dateformat" value="DD.MM.YYYY">
+        </div>
+        
+        <div class="form-group" id="estimationUnitForm">
+          <label class="text" for="estimationUnit">Estimation Unit</label><br>
+          <input type="radio" name="estimationUnit" value="hours" checked>Hours<br>
+          <input type="radio" name="estimationUnit" value="native">Storypoints<br>
+          <input type="radio" name="estimationUnit" value="days">Days<br>
+          <input type="radio" name="estimationUnit" value="weeks">Weeks<br>
+        </div>
+        
+        
+        <div class="form-group">
+          <input class="magic-checkbox" type="checkbox" name="layout" id="parentSort" value="parentSort">
+          <label class="pull-left" for="parentSort"></label>
+          <label class="pull-left text" for="parentSort">Sort by parents</label>
+          <div class="spacer"></div>
+        </div>
+        
+      </form>
+      
+      <div id="error-bar">
+      </div>
+      
+    </div>
+    
+    <div class="sidebar bottom">     
+      <div id="next-menu">
+        <button class="white btn-block" id="send-request">
+          <div class="title">Send Request</div>
+        </button>
+        <button class="white btn-block" id="send-request-clean">
+          <div class="title">Clean Sheet and Send Request</div>
+        </button>
+        <button class="white btn-block" id="send-request-insert">
+          <div class="title">Send Request and Put Result<br>to a New Sheet</div>
+        </button>
+      </div>
+     <button class="white btn-block pull-left" id="back">
+       <div class="title">2 Build JQL Query</div>
+       <div class="left-arrow"></div>
+     </button>
+     <button class="blue btn-block pull-right button-menu" id="next">
+       <div class="title">4 Get JQL<br>Result</div>
+     </button>
+    </div>
+    <script>
+      /**
+       * On document load, assign click handlers to each button and try to load the
+       * user's preferences if previously set.
+       */
+      $(function() {
+        google.script.run.withSuccessHandler(loadPreferences)
+            .withFailureHandler(showError).getDisplayPreferences();
+        
+        $('#next').click(function() {
+          $('#next-menu').slideToggle(500);
+          $(this).toggleClass('active');
+        });
+        
+        $('#back').click(function() {
+          this.disabled = true;
+          google.script.run.withUserObject(this).showDisplayOptions();
+        });
+        
+        $('#send-request').click(function() {
+          this.disabled = true;
+          google.script.run.withUserObject(this).sendRequest();
+          google.script.host.close();
+        });
+        
+        $('#send-request-clean').click(function() {
+          this.disabled = true;
+          google.script.run.withUserObject(this).cleanSheetAndSendRequest();
+          google.script.host.close();
+        });
+        
+        $('#send-request-insert').click(function() {
+          this.disabled = true;
+          google.script.run.withUserObject(this).sendRequestAndInsertToNew();
+          google.script.host.close();
+        });
+        
+        $('#back').click(function() {
+          this.disabled = true;
+          google.script.run.withUserObject(this).showBuildJqlQuery();
+        });
+        
+        init();
+        
+        $('.panel-heading').click(function() {
+          $(this).parent().find('.panel-body').slideToggle(500);
+          $(this).toggleClass("active");
+        });
+      });
+      /**
+       * Callback function that populates input fields.
+       */
+      function loadPreferences(userPrefs) {
+        var options = JSON.parse(userPrefs);
+        
+        $("input[type=checkbox][value=parentSort]").prop("checked",options.sortByParents);
+        
+        if (typeof options.dateformat !== 'undefined') {
+          $('#dateformat').val(options.dateformat);
+        }
+        
+        for (var i = 0, len = options.fields2links.length; i < len; i++) 
+          $("input[type=checkbox][value=" + options.fields2links[i] + "]").prop("checked", true);
+        
+        if (options.estimationUnit) 
+          $("input[name=estimationUnit][value=" + options.estimationUnit + "]").prop('checked', true);
+      }
+
+      /**
+       * Runs a server-side function to translate the user-selected text and update
+       * the sidebar UI with the resulting translation.
+       */
+      function saveDisplayOptions() {         
+        $('#error').remove();
+        var options = {};
+        options.dateformat = $('#dateformat').val();
+        options.fields2links = getFields2Link();
+        options.estimationUnit = $('input[name=estimationUnit]:checked').val();
+        options.sortByParents = $('#parentSort').prop("checked")
+        
+        google.script.run
+            .withFailureHandler(
+              function(msg, element) {
+                showError(msg, $('#error-bar'));
+              })
+            .withUserObject(this)
+            .saveDisplayOptions(JSON.stringify(options));       
+      }
+
+      /**
+       * Inserts a div that contains an error message after a given element.
+       *
+       * @param msg The error message to display.
+       * @param element The element after which to display the error.
+       */
+      function showError(msg, element) {
+        stopProgressBar()
+        var div = $('<div id="error" class="error">' + msg + '</div>');
+        $(element).after(div);
+      }
+      
+      function getFields2Link() {
+        return $("#asLinks input:checkbox:checked").map(function(){
+          return $(this).val();
+        }).get();
+      }
+      
+      function init() {
+        $("input").change(function() {saveDisplayOptions();});
+        $('#dateformat').keyup(function() {saveDisplayOptions();});
+      }
+    </script>
+  </body>
+</html>
+

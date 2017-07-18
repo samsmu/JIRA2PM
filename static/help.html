@@ -1,0 +1,59 @@
+<html>
+<head>
+	<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+	<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+	<title>JIRA2PM :: Help</title>
+</head>
+<body>
+	<div class="container">
+		<div class="col-lg-12">
+			<h1>JIRA2PM Help</h1>
+			
+			<h2>Connection settings</h2>
+			<p>Connection settings consist of 3 fields: 
+			<ul>
+			<li><b>Username</b> - username which you use in JIRA</li>
+			<li><b>Password</b> - password for your account</li>
+			<li><b>Base URL</b> - base url of your JIRA server. In case of cloud JIRA hosting it will be looks like <code>https://example.atlassian.net/</code></li>
+			</ul>
+			After filling all fields, press <code>connect</code> to connect to JIRA. Button should be changed to the success message after connecting.
+			</p>
+			
+			<h2>JQL Query</h2>
+			<p>
+			<ul>
+			<li><b>JQL Query</b> - A query which you want to fetch. You can create it in JIRA and then copy to this field</li>
+			<li><b>Fields to Show</b> - Fields which will be displayed in table</li>
+			</ul>
+			Important Note: At this moment only GiHub control version is supported.
+			</p>
+			
+			<h2>Display Options</h2>
+			<p>
+			<ul>
+			<li><b>Fields Displayed as Hyperlinks</b> - selected fields will be displayed as hyperlinks to issues or JQL queries</li>
+			<li><b>Date Format</b> - Format to display dates. Y - year, M - month, D - day, h - hour, m - minute, s - second</li>
+			<li><b>Estimation Unit</b> - Unit in which estimations will be displayed</li>
+			<li><b>Sort by parents</b> - Sort issues by epics and subtasks. Epics have additional formatting</li>
+			</ul>
+			</p>
+			
+			<h2>Setup Storage</h2>
+			<p>
+			<ul>
+			<li><b>Refresh every...</b> - If this option has been selected - the add-on should check was the last row inserted in the table before the selected time interval. If it was, the old information will be updated</li>
+			</ul>
+			</p>
+			
+			<h2>Get Result</h2>
+			<p>
+			<ul>
+			<li><b>Send Request</b> - Sends request to JIRA with selected options and inserts received data into active sheet</li>
+			<li><b>Clean Sheet and Send Request</b> - Additionaly cleans sheet before inserting data from request</li>
+			<li><b>Send Request and Insert Data into New Sheet</b> - Inserts data from request to newly created sheet</li>
+			</ul>
+			</p>
+		</div>
+	</div>
+</body>
+</html>
