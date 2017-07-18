@@ -9,6 +9,8 @@ function onOpen(e) {
         .addItem('Send Request and Insert Data to New Sheet', 'sendRequestAndInsertToNew'))
       .addSeparator()
       .addItem('Setup Storage', 'showSetUpStorage')
+      .addSeparator()
+      .addItem('Convert to JIRA Link', 'showConvertToJiraLink')
       .addToUi();
 }
 
@@ -38,6 +40,10 @@ function showSetUpStorage() {
   showSidebar('SetUpStorage', 'JIRA2PM :: Setup Storage');
 }
 
+function showConvertToJiraLink() {
+  showSidebar('ConvertToJiraLink', 'JIRA2PM :: Convert to JIRA Link');
+}
+
 function sendRequest() {
   sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
   fetchJira_();
@@ -48,6 +54,21 @@ function cleanSheetAndSendRequest() {
   sheet.clear();
     
   sendRequest();
+}
+
+function getCurrentRangeValues() {
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+  return JSON.stringify(sheet.getActiveRange().getValues());
+}
+
+function convertKeysToLinks(keysJSON) {
+  var keys = JSON.parse(keysJSON);
+  var connectOptions = JSON.parse(PropertiesService.getUserProperties().getProperty('connectOptions'));
+  
+  if (!connectOptions.baseURL) 
+    throw ("No connection options were found. Please connect to JIRA first");
+  
+  return connectOptions.baseURL + "issues/?jql=key%20in%20(" + encodeURIComponent(keys.join()) + ")";
 }
 
 function sendRequestAndInsertToNew() {

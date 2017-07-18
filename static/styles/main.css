@@ -335,3 +335,8 @@ select {
 #storage {
   display: none;
 }
+
+.big-textarea {
+  width: 100%;
+  height: 40vh;
+}
