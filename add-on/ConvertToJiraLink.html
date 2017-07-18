@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <link rel="stylesheet" href="https://ssl.gstatic.com/docs/script/css/add-ons1.css">
+    <!-- The CSS package above applies Google styling to buttons and other elements. -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css?family=Roboto" rel="stylesheet">
+    <link href="https://jira2pm.appspot.com/styles/main.css?v=1.1" rel="stylesheet">
+    
+  </head>
+  <body>
+    <div class="sidebar">
+      Insert your JIRA ticket keys here
+      <form id="mainform">
+        <textarea class="big-textarea" id="keys"></textarea>
+        <button class="blue btn-block" id="convertButton">Convert to Link</button>
+        <div class="spacer"></div>
+        <textarea class="big-textarea" id="linkToKeys"></textarea>
+      </form>
+      <button class="blue btn-block" id="linkButton" onclick="">Open Link</button>
+      <div id="error-bar">
+      </div> 
+    </div>
+    
+    <script>
+    $(function() {
+      google.script.run.withSuccessHandler(onLoad)
+        .withFailureHandler(showError).getCurrentRangeValues();
+        
+      $("#convertButton").click(convertToLinks);
+      $("#linkButton").click(goToLink);
+    });
+    
+    function onLoad(activeValuesJSON) {
+      var activeValues = JSON.parse(activeValuesJSON);
+      $('#keys').val(activeValues.join('\n'));
+    }
+    
+    function convertToLinks() {
+      $("#convertButton").prop("disabled", true);
+      google.script.run.withSuccessHandler(onLinkReady)
+        .withFailureHandler(showError).convertKeysToLinks(JSON.stringify($('#keys').val().split('\n')));
+    }
+    
+    function onLinkReady(link) {
+      $("#linkToKeys").val(link);
+      $("#convertButton").prop("disabled", false );
+    }
+    
+    function goToLink() {
+      window.open($("#linkToKeys").val());
+    }
+    
+    function showError(msg, element) {
+      var div = $('<div id="error" class="error">' + msg + '</div>');
+      $(element).after(div);
+    }
+    </script>
+  </body>
+</html>
+
