@@ -52,7 +52,7 @@ function sendRequest() {
 function cleanSheetAndSendRequest() {
   sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
   sheet.clear();
-    
+  
   sendRequest();
 }
 
@@ -390,6 +390,27 @@ function formatValue(value, format) {
         return date2str(new Date(Date.UTC(a[0], a[1] - 1, a[2], a[3]-a[6]/100, a[4], a[5])), displayOptions.dateformat);
       else
         return date2str(new Date(Date.UTC(a[0], a[1] - 1, a[2])), displayOptions.dateformat);
+    case 'attachment':
+      var fetchArgs = {
+        contentType: 'application/json',
+        headers: {'Authorization':'Basic ' +  connectOptions.ennCred},
+        muteHttpExceptions: true
+      };
+      
+      var url = connectOptions.baseURL + 'rest/api/2/issue/' + value + '?expand=attachment';
+      
+      var httpResponse = UrlFetchApp.fetch(url, fetchArgs);
+      if (httpResponse) {
+        var responseCode = httpResponse.getResponseCode();
+        if (responseCode == 200) {
+          var data = JSON.parse(httpResponse.getContentText());
+          var mimeTypes = jsonPathToValue(data, 'fields.attachment.mimeType');
+          var seen = {};
+          return mimeTypes.split(/,|\//).filter(function(item) {
+            return seen.hasOwnProperty(item) ? false : (seen[item] = true);
+          }).join(', ');
+        }
+      }
     case 'prLink':
       var fetchArgs = {
         contentType: 'application/json',
