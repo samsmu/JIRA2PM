@@ -1,3 +1,9 @@
+reposTypes = [
+  'github',
+  'bitbucket',
+  'gitlab',
+  ]
+
 function onOpen(e) {
   SpreadsheetApp.getUi().createAddonMenu()
       .addItem('1 Connect to JIRA', 'showConnectToJira')
@@ -418,19 +424,21 @@ function formatValue(value, format) {
         muteHttpExceptions: true
       };
       
-      var url = connectOptions.baseURL + 'rest/dev-status/1.0/issue/detail?issueId=' + value + '&applicationType=github&dataType=pullrequest';
-      
-      var httpResponse = UrlFetchApp.fetch(url, fetchArgs);
-      if (httpResponse) {
-        var responseCode = httpResponse.getResponseCode();
-        if (responseCode == 200) {
-          var data = JSON.parse(httpResponse.getContentText());
-          if (typeof data.detail[0].branches[0] == 'undefined') return '';
-          var githubUrl = data.detail[0].branches[0].repository.url + '/pull/';
-          
-          return data.detail[0].pullRequests.map(function(x) { return x.status + ' | ' + githubUrl + x.id.substring(1);}).join('\n');
+      var prList = [];
+      for (var i=0; i<reposTypes.length; i++) {
+        var url = connectOptions.baseURL + 'rest/dev-status/1.0/issue/detail?issueId=' + value + '&applicationType=' + reposTypes[i] + '&dataType=pullrequest';
+        var httpResponse = UrlFetchApp.fetch(url, fetchArgs);
+        if (httpResponse) {
+          var responseCode = httpResponse.getResponseCode();
+          if (responseCode == 200) {
+            var data = JSON.parse(httpResponse.getContentText());
+            if (typeof data.detail[0] == 'undefined') continue;
+            data.detail[0].pullRequests.map(function(x) { prList.push(x.status + ' | ' + x.url);});
+          }
         }
       }
+      
+      return prList.join('\n');
     case 'text':
       return '"' + value + '"';
     case 'textcap':
