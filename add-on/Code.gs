@@ -319,10 +319,10 @@ function jsonPathToValue(jsonData, path, toLink) {
         return "";
       }
     } else {
-      var values = jsonData.map(function(x) { return x[key];}).toString();
+      var values = jsonData.map(function(x) { return x[key];});
       if (typeof toLink != 'undefined' && values.length > 0) 
         return value2link(values, toLink);
-      return values;
+      return values.toString();
     }
   }
   
@@ -442,7 +442,7 @@ function formatValue(value, format) {
     case 'text':
       return '"' + value + '"';
     case 'textcap':
-      return '"' + value.substring(0,50000) + '"';
+      return value.substring(0,50000);
     case 'array':
       return value;
     case 'sprint':
