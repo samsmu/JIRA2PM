@@ -345,7 +345,7 @@ function getLastTimeStamp(msDif) {
   if (sheet.getLastRow() == 0)
     return [NaN, -1];  
   
-  var date = values[sheet.getLastRow() - 1][index];
+  var date = values[sheet.getLastRow() - 1][jqlOptions.fields.length];
   
   // Unparsable
   if (typeof date == 'undefined')
