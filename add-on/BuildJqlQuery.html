@@ -9,7 +9,8 @@
     <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css?family=Roboto" rel="stylesheet">
-    <link href="https://jira2pm.appspot.com/styles/main.css?v=1.1" rel="stylesheet">
+    <link href="https://jira2pm.appspot.com/styles/main.css?v=1.4" rel="stylesheet">
+
   </head>
   <body>
     <div class="sidebar branding-below">
@@ -73,6 +74,19 @@
           </div>
         </div>
         
+        <div class="panel panel-default">
+          <div class="panel-heading">Custom Fields</div>
+          <div class="panel-body">
+            <div class="customFields2fetch" id="custom-fields">
+              
+            </div>
+            <input type="text" id="custom-field-text">
+            <button type=button class="blue btn-block" id="add-custom-field-button">
+              <div class="title">Add Custom Field</div>
+            </button>
+          </div>
+        </div>
+        
       </form>
       
       <div id="error-bar">
@@ -129,7 +143,10 @@
       
         for (var i = 0, len = options.fields.length; i < len; i++) 
           $("input[type=checkbox][value=" + options.fields[i].replace(/\./g,"\\.").replace(/\|/g,"\\|") + "]").prop("checked",true);
-          
+        
+        for (var i = 0, len = options.customFields.length; i < len; i++)
+          createCustomField(options.customFields[i]);
+        
         // Initialize selectAll state
         var inputsCount = $(".fields2fetch input").length;
         var checkedCount = $(".fields2fetch input:checkbox:checked").length;
@@ -147,6 +164,7 @@
         
         options.fields = getFields2Fetch();
         options.fieldsNames = getFieldsNames();
+        options.customFields = getCustomFields();
         
         google.script.run
             .withFailureHandler(
@@ -179,6 +197,10 @@
         return $(".fields2fetch input:checkbox:checked").map(function(){
           return $(this).next().next(".text").text();
         }).get();
+      }
+      
+      function getCustomFields() {
+        return $('#custom-fields label').map(function() {return $(this).text(); }).get();
       }
       
       function createCheckBoxes() {
@@ -260,14 +282,51 @@
          $(checkList).append(checkbox);
       }
       
+      function addCustomField() {
+        // Get field
+        var textField = $('#custom-field-text');
+        var value = textField.val();
+        textField.val("");
+        $('#add-custom-field-button').prop('disabled', true);
+        
+        // Create new label
+        createCustomField(value);
+        
+        saveJql();
+      }
+      
+      function createCustomField(value) {
+        var customField = $('<div class="customField"></div>');
+        customField.append($('<label class="pull-left">' + value + '</label>'));
+        customField.append($('<button type="button" class="pull-right white btn-block btn-delete" onclick="deleteCustomField(this)"><div class="title">Delete</div></button>'));
+        customField.append($('<div class="spacer"></div>'));
+        $('#custom-fields').append(customField);
+        customField.show('fast');
+      }
+      
+      function deleteCustomField(caller) {
+        $(caller).parent().hide('fast', function(){this.remove(); saveJql();});
+      }
+      
       function init() {
+        $('#add-custom-field-button').prop('disabled', true);
+        $('#add-custom-field-button').click(addCustomField);
+      
         // Select all 
         $("#selectAll").change(function() {
           $(".fields2fetch input").prop("checked", this.checked);
           saveJql();
         });
         
+        $('#custom-field-text').keypress(function(e) {
+          if (e.keyCode == '13') {
+            e.preventDefault();
+            addCustomField();
+          }
+        });
+        
         $('#jql').keyup(function(){saveJql()});
+        $('#custom-field-text').keyup(function(){ $('#add-custom-field-button').prop('disabled', this.value.length < 1 );});
         
         // Change select all when selecting/deselecting item in list
         var inputsCount = $(".fields2fetch input").length;

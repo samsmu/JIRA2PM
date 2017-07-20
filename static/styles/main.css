@@ -340,3 +340,28 @@ select {
   width: 100%;
   height: 30vh;
 }
+
+#custom-field-text {
+  width: 100%;
+}
+
+#add-custom-field-button {
+  margin-bottom: 13px;
+  margin-top: 13px;
+}
+
+.customField {
+  display: none;
+}
+
+.btn-delete {
+  width: 20%;
+}
+
+.btn-delete:hover {
+  color: #cc0000;
+}
+
+.customField label {
+  margin-top: 5px;
+}
