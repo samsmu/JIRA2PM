@@ -164,6 +164,10 @@ function fetchJira_() {
   
   localOptions = JSON.parse(PropertiesService.getUserProperties().getProperty('localOptions'));
   
+  var customFields = getCustomFields();
+  jqlOptions.fields = jqlOptions.fields.concat(customFields.fields);
+  jqlOptions.fieldsNames = jqlOptions.fieldsNames.concat(customFields.fieldsNames);  
+  
   var baseURL = connectOptions.baseURL;
   var jql = jqlOptions.jql;
   
@@ -371,6 +375,54 @@ function getLastTimeStamp(msDif) {
   }
   
   return [NaN, -1];
+}
+
+function getCustomFields() {
+  var customFields = {fields:[], fieldsNames:[]};
+  
+  var fetchArgs = {
+    contentType: 'application/json',
+    headers: {'Authorization':'Basic ' +  connectOptions.ennCred},
+    muteHttpExceptions: true
+  };
+
+  var url = connectOptions.baseURL + 'rest/api/2/field';
+  
+  var httpResponse = UrlFetchApp.fetch(url, fetchArgs);
+  if (httpResponse) {
+    var responseCode = httpResponse.getResponseCode();
+    if (responseCode == 200) {
+      var data = JSON.parse(httpResponse.getContentText());
+      
+      data.map(function(x){
+        if (jqlOptions.customFields.indexOf(x.name) > -1) {
+          
+          customFields.fields.push(getPathForType(x.schema.type, x.id));
+          customFields.fieldsNames.push(x.name);
+        }
+      });
+    }
+  }
+  
+  return customFields;
+}
+
+function getPathForType(type, id) {
+  switch(type) {
+    case 'option':
+      return 'fields.' + id + '.value';
+    case 'number':
+      return 'fields.' + id;
+    case 'array':
+      return 'array|fields.' + id;
+    case 'string':
+      return 'fields.' + id;
+    case 'user':
+      return 'user|fields.' + id + '.displayName'
+  }
+  
+  // Case any
+  return 'fields.' + id;
 }
 
 function formatValue(value, format) {
