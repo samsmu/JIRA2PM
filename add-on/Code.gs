@@ -50,20 +50,29 @@ function showConvertToJiraLink() {
   showSidebar('ConvertToJiraLink', 'JIRA2PM :: Convert to JIRA Link');
 }
 
-function sendRequest() {
-  sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+function sendRequest(page) {
+  sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();  
+  if (page)
+    return fetchJira_(JSON.parse(page));
+  
   fetchJira_();
 }
 
-function cleanSheetAndSendRequest() {
+function cleanSheetAndSendRequest(page) {
   sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
   sheet.clear();
+  
+  if (page)
+    return sendRequest(page);
   
   sendRequest();
 }
 
-function sendRequestAndInsertToNew() {
+function sendRequestAndInsertToNew(page) {
   sheet = SpreadsheetApp.getActiveSpreadsheet().insertSheet();
+  if (page)
+    return fetchJira_(JSON.parse(page));
+  
   fetchJira_();
 }
 
@@ -147,7 +156,7 @@ function saveSetUpStorageOptions(optionsJSON) {
   PropertiesService.getUserProperties().setProperty('setUpStorageOptions', optionsJSON);
 }
 
-function fetchJira_() {
+function fetchJira_(page) {
   var properties = PropertiesService.getUserProperties();
   
   connectOptions = JSON.parse(properties.getProperty('connectOptions'));
@@ -195,7 +204,12 @@ function fetchJira_() {
   
   jql = '?jql='.concat(jql);
   if (jql.indexOf('maxResults') < 0 && jql.length > 0)
-    jql = jql.concat('&maxResults=1000');
+    if (page) 
+      jql = jql.concat('&startAt=' + page.startAt + '&maxResults=' + page.maxResults);
+    else
+      jql = jql.concat('&maxResults=1000');
+  
+  var continuePaging = false;
   
   var httpResponse = UrlFetchApp.fetch(baseURL + jql, fetchArgs);
   if (httpResponse) {
@@ -203,13 +217,23 @@ function fetchJira_() {
     if (responseCode == 200) {
       var data = JSON.parse(httpResponse.getContentText());
       
-      // Decide whether we need to append data or to update existant 
-      var lastTimestamp = getLastTimeStamp(minDif);
-      updateHeadRow();
-      if (lastTimestamp[1] == -1 || !setUpStorageOptions.refresh)
+      if (page) {
+        if (page.startAt == 0)
+          updateHeadRow();
+        
         appendJira_(data);
-      else
-        appendJira_(data, lastTimestamp[1]);
+        
+        continuePaging = data.total > data.maxResults + data.startAt;
+      }
+      else {
+        // Decide whether we need to append data or to update existant 
+        var lastTimestamp = getLastTimeStamp(minDif);
+        updateHeadRow();
+        if (lastTimestamp[1] == -1 || !setUpStorageOptions.refresh)
+          appendJira_(data);
+        else
+          appendJira_(data, lastTimestamp[1]);
+      }
       
       setupFilter(sheet);
     } 
@@ -223,11 +247,11 @@ function fetchJira_() {
           break;
       }
     }
-  } 
+  }
   else 
     throw 'Can not access server.';
   
-  return 1;
+  return JSON.stringify({continuePaging: continuePaging});
 }
 
 function appendJira_(data, fromIndex) { 
@@ -254,13 +278,13 @@ function appendJira_(data, fromIndex) {
   // Delete old values
   if (!isNaN(fromIndex)) 
     sheet.getRange(fromIndex + 2, 1, sheet.getLastRow() - fromIndex - 1, jqlOptions.fields.length + 1).clear();
-  
+  /*
   if (displayOptions.sortByParents) {
     var sortedList = sortIssueList(issues);
     issues = sortedList.resultList;
     formatRows(sortedList.formatList);
-  } else 
-    issues = issues.map(function(x){return x.value;});
+  } else */
+  issues = issues.map(function(x){return x.value;});
   
   var lastRow = sheet.getLastRow() + 1;
   for (var i = 0; i < jqlOptions.fields.length + 1; i++) {
