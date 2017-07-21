@@ -92,13 +92,14 @@
           <input type="radio" name="estimationUnit" value="weeks">Weeks<br>
         </div>
         
-        
+        <!--
         <div class="form-group">
           <input class="magic-checkbox" type="checkbox" name="layout" id="parentSort" value="parentSort">
           <label class="pull-left" for="parentSort"></label>
           <label class="pull-left text" for="parentSort">Sort by parents</label>
           <div class="spacer"></div>
         </div>
+        -->
         
       </form>
       
@@ -109,13 +110,13 @@
     
     <div class="sidebar bottom">     
       <div id="next-menu">
-        <button class="white btn-block" id="send-request">
+        <button type="button" class="white btn-block" id="send-request">
           <div class="title">Send Request</div>
         </button>
-        <button class="white btn-block" id="send-request-clean">
+        <button type="button" class="white btn-block" id="send-request-clean">
           <div class="title">Clean Sheet and Send Request</div>
         </button>
-        <button class="white btn-block" id="send-request-insert">
+        <button type="button" class="white btn-block" id="send-request-insert">
           <div class="title">Send Request and Put Result<br>to a New Sheet</div>
         </button>
       </div>
@@ -147,21 +148,18 @@
         });
         
         $('#send-request').click(function() {
-          this.disabled = true;
-          google.script.run.withUserObject(this).sendRequest();
-          google.script.host.close();
+          page = {startAt: 0, maxResults: 200}
+          google.script.run.withSuccessHandler(paginateRequest).withUserObject(this).sendRequest(JSON.stringify(page));
         });
         
         $('#send-request-clean').click(function() {
-          this.disabled = true;
-          google.script.run.withUserObject(this).cleanSheetAndSendRequest();
-          google.script.host.close();
+          page = {startAt: 0, maxResults: 200}
+          google.script.run.withSuccessHandler(paginateRequest).withUserObject(this).cleanSheetAndSendRequest(JSON.stringify(page));
         });
         
         $('#send-request-insert').click(function() {
-          this.disabled = true;
-          google.script.run.withUserObject(this).sendRequestAndInsertToNew();
-          google.script.host.close();
+          page = {startAt: 0, maxResults: 200}
+          google.script.run.withSuccessHandler(paginateRequest).withUserObject(this).sendRequestAndInsertToNew(JSON.stringify(page));
         });
         
         $('#back').click(function() {
@@ -176,13 +174,23 @@
           $(this).toggleClass("active");
         });
       });
+      
+      function paginateRequest(result) {
+        var result = JSON.parse(result);
+        
+        page.startAt += page.maxResults;
+        
+        if (result.continuePaging) 
+            google.script.run.withSuccessHandler(paginateRequest).withUserObject(this).sendRequest(JSON.stringify(page));
+      }
+      
       /**
        * Callback function that populates input fields.
        */
       function loadPreferences(userPrefs) {
         var options = JSON.parse(userPrefs);
         
-        $("input[type=checkbox][value=parentSort]").prop("checked",options.sortByParents);
+        //$("input[type=checkbox][value=parentSort]").prop("checked",options.sortByParents);
         
         if (typeof options.dateformat !== 'undefined') {
           $('#dateformat').val(options.dateformat);
@@ -205,7 +213,7 @@
         options.dateformat = $('#dateformat').val();
         options.fields2links = getFields2Link();
         options.estimationUnit = $('input[name=estimationUnit]:checked').val();
-        options.sortByParents = $('#parentSort').prop("checked")
+        //options.sortByParents = $('#parentSort').prop("checked")
         
         google.script.run
             .withFailureHandler(
@@ -235,9 +243,10 @@
       }
       
       function init() {
-        $("input").change(function() {saveDisplayOptions();});
+        $('input').change(function() {saveDisplayOptions();});
         $('#dateformat').keyup(function() {saveDisplayOptions();});
       }
     </script>
   </body>
 </html>
+
