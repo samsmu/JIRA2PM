@@ -365,3 +365,16 @@ select {
 .customField label {
   margin-top: 5px;
 }
+
+#update-custom-button {
+  margin-bottom: 13px;
+  margin-top: 13px;
+}
+
+label.regex {
+  font-size: 19px;
+}
+
+.regex-field {
+  width: 90%;
+}

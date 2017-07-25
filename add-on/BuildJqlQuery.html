@@ -9,8 +9,7 @@
     <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css?family=Roboto" rel="stylesheet">
-    <link href="https://jira2pm.appspot.com/styles/main.css?v=1.4" rel="stylesheet">
-
+    <link href="https://jira2pm.appspot.com/styles/main.css?v=1.5" rel="stylesheet">
   </head>
   <body>
     <div class="sidebar branding-below">
@@ -80,9 +79,8 @@
             <div class="customFields2fetch" id="custom-fields">
               
             </div>
-            <input type="text" id="custom-field-text">
-            <button type=button class="blue btn-block" id="add-custom-field-button">
-              <div class="title">Add Custom Field</div>
+            <button type=button class="blue btn-block" id="update-custom-button">
+              <div class="title">Reload Custom Fields</div>
             </button>
           </div>
         </div>
@@ -139,18 +137,20 @@
        */
       function loadPreferences(userPrefs) {
         var options = JSON.parse(userPrefs);
-        $('#jql').val(options.jql);
+        var jqlOptions = JSON.parse(options.jqlOptions);
+        $('#jql').val(jqlOptions.jql);
       
-        for (var i = 0, len = options.fields.length; i < len; i++) 
-          $("input[type=checkbox][value=" + options.fields[i].replace(/\./g,"\\.").replace(/\|/g,"\\|") + "]").prop("checked",true);
+        // Create custom fields
+        recreateCustoms(options.customFields, true);
+      
+        for (var i = 0, len = jqlOptions.fields.length; i < len; i++) 
+          $("input[type=checkbox][value=" + jqlOptions.fields[i].replace(/\./g,"\\.").replace(/\|/g,"\\|") + "]").prop("checked",true);
         
-        for (var i = 0, len = options.customFields.length; i < len; i++)
-          createCustomField(options.customFields[i]);
-        
-        // Initialize selectAll state
-        var inputsCount = $(".fields2fetch input").length;
-        var checkedCount = $(".fields2fetch input:checkbox:checked").length;
-        $("#selectAll").prop("checked",checkedCount == inputsCount)
+        for (var i = 0, len = jqlOptions.customFields.length; i < len; i++) {
+          var checkbox = $("input[type=checkbox][value=" + jqlOptions.customFields[i].value.replace(/\./g,"\\.").replace(/\|/g,"\\|") + "]");
+          checkbox.prop("checked",true);
+          checkbox.parent().find('.regex-field').val(jqlOptions.customFields[i].regex);
+        }
       }
 
       /**
@@ -200,7 +200,7 @@
       }
       
       function getCustomFields() {
-        return $('#custom-fields label').map(function() {return $(this).text(); }).get();
+        return $('#custom-fields input:checkbox:checked').map(function(){return {value: $(this).val(), name: $(this).next().next(".text").text(), regex: $(this).parent().find('.regex-field').val()} }).get();
       }
       
       function createCheckBoxes() {
@@ -270,51 +270,65 @@
           createCheckBox(key, versionControlDictionary[key], checkList);
       }
       
-      function createCheckBox(key, value, checkList) {
+      function createCheckBox(key, value, checkList, custom) {
          var id = value.replace(".", "_");
+         var container = $('<div class="wrapper"></div>');
          var checkbox = $('<input class="magic-checkbox" type="checkbox" name="layout" id="' + id + '" value="' + value + '">');
-         $(checkList).append(checkbox);
+         $(container).append(checkbox);
          checkbox = $('<label class="pull-left" for="' + id + '"></label>');
-         $(checkList).append(checkbox);
+         $(container).append(checkbox);
          checkbox = $('<label class="pull-left text" for="' + id + '">' + key + '</label>');
-         $(checkList).append(checkbox);
+         $(container).append(checkbox);
+         if (custom) {
+           checkbox = $('<br style="clear:both" /><label class="pull-left text regex">/</label>');
+           $(container).append(checkbox);
+           checkbox = $('<input type="text" class="regex-field">');
+           $(container).append(checkbox);
+           checkbox = $('<label class="pull-right text regex">/</label>');
+           $(container).append(checkbox);
+         }
          checkbox = $('<div class="spacer"></div>');
-         $(checkList).append(checkbox);
+         $(container).append(checkbox);
+         
+         $(checkList).append(container);
       }
       
-      function addCustomField() {
-        // Get field
-        var textField = $('#custom-field-text');
-        var value = textField.val();
-        textField.val("");
-        $('#add-custom-field-button').prop('disabled', true);
+      function updateCustoms() {
+        google.script.run.withSuccessHandler(recreateCustoms).withFailureHandler(showError).updateCustomFields();
+      }
+      
+      function recreateCustoms(customFieldsJSON, withoutSave) {
+        var customFields = JSON.parse(customFieldsJSON);
+        var checkList = $('#custom-fields');
+        checkList.empty();
         
-        // Create new label
-        createCustomField(value);
+        for (var i = 0;i < customFields.fields.length; i++)
+          createCheckBox(customFields.fieldsNames[i], customFields.fields[i], checkList, true);
         
+        inputsCount = $(".fields2fetch input").length + customFields.fields.length;
+        
+        $('#custom-fields input').change(function() {
+          var checkedCount = $('#custom-fields input:checkbox:checked').length + $(".fields2fetch input:checkbox:checked").length;
+          $('#selectAll').prop('checked',checkedCount == inputsCount)
+          saveJql();
+        });
+        
+        // Initialize selectAll state
+        var checkedCount = $('#custom-fields input:checkbox:checked').length + $(".fields2fetch input:checkbox:checked").length;
+        $("#selectAll").prop("checked",checkedCount == inputsCount)
+        
+        if (withoutSave)
+          return;
         saveJql();
       }
       
-      function createCustomField(value) {
-        var customField = $('<div class="customField"></div>');
-        customField.append($('<label class="pull-left">' + value + '</label>'));
-        customField.append($('<button type="button" class="pull-right white btn-block btn-delete" onclick="deleteCustomField(this)"><div class="title">Delete</div></button>'));
-        customField.append($('<div class="spacer"></div>'));
-        $('#custom-fields').append(customField);
-        customField.show('fast');
-      }
-      
-      function deleteCustomField(caller) {
-        $(caller).parent().hide('fast', function(){this.remove(); saveJql();});
-      }
-      
       function init() {
-        $('#add-custom-field-button').prop('disabled', true);
-        $('#add-custom-field-button').click(addCustomField);
+        $('#update-custom-button').click(updateCustoms);
       
         // Select all 
-        $("#selectAll").change(function() {
-          $(".fields2fetch input").prop("checked", this.checked);
+        $('#selectAll').change(function() {
+          $('.fields2fetch input').prop('checked', this.checked);
+          $('#custom-fields input').prop('checked', this.checked);
           saveJql();
         });
         
@@ -326,13 +340,12 @@
         });
         
         $('#jql').keyup(function(){saveJql()});
-        $('#custom-field-text').keyup(function(){ $('#add-custom-field-button').prop('disabled', this.value.length < 1 );});
         
         // Change select all when selecting/deselecting item in list
-        var inputsCount = $(".fields2fetch input").length;
+        inputsCount = $(".fields2fetch input").length;
         
         $(".fields2fetch input").change(function() {
-          var checkedCount = $(".fields2fetch input:checkbox:checked").length;
+          var checkedCount = $('#custom-fields input:checkbox:checked').length + $(".fields2fetch input:checkbox:checked").length;
           $("#selectAll").prop("checked",checkedCount == inputsCount)
           saveJql();
         });

@@ -1,3 +1,9 @@
+if (!String.prototype.startsWith) {
+    String.prototype.startsWith = function(searchString, position){
+      return this.substr(position || 0, searchString.length) === searchString;
+  };
+}
+
 reposTypes = [
   'github',
   'bitbucket',
@@ -96,7 +102,7 @@ function getConnectPreferences() {
 }
 
 function getJqlPreferences() {
-  return PropertiesService.getUserProperties().getProperty('jqlOptions');
+  return JSON.stringify({jqlOptions: PropertiesService.getUserProperties().getProperty('jqlOptions'), customFields: PropertiesService.getUserProperties().getProperty('customFields')});
 }
 
 function getDisplayPreferences() {
@@ -156,6 +162,42 @@ function saveSetUpStorageOptions(optionsJSON) {
   PropertiesService.getUserProperties().setProperty('setUpStorageOptions', optionsJSON);
 }
 
+function updateCustomFields() {
+  var properties = PropertiesService.getUserProperties();
+  var connectOptions = JSON.parse(properties.getProperty('connectOptions'));
+  if (connectOptions == null) throw 'Setup connection options';
+  
+  var customFields = {fields:[], fieldsNames:[]};
+  
+  var fetchArgs = {
+    contentType: 'application/json',
+    headers: {'Authorization':'Basic ' + connectOptions.ennCred},
+    muteHttpExceptions: true
+  };
+  
+  var url = connectOptions.baseURL + 'rest/api/2/field';
+  
+  var httpResponse = UrlFetchApp.fetch(url, fetchArgs);
+  if (httpResponse) {
+    var responseCode = httpResponse.getResponseCode();
+    if (responseCode == 200) {
+      var data = JSON.parse(httpResponse.getContentText());
+      
+      data.map(function(x){
+        if (x.custom) {
+          customFields.fields.push(getPathForType(x.schema.type, x.id));
+          customFields.fieldsNames.push(x.name);
+        }
+      });
+    }
+  }
+  
+  customFields = JSON.stringify(customFields);
+  properties.setProperty('customFields', customFields);
+  
+  return customFields;
+}
+
 function fetchJira_(page) {
   var properties = PropertiesService.getUserProperties();
   
@@ -172,10 +214,10 @@ function fetchJira_(page) {
   if (setUpStorageOptions == null) setUpStorageOptions = {refresh: null, refreshCount: 1, refreshMeasurement: 'hours', storage: 'global'};
   
   localOptions = JSON.parse(PropertiesService.getUserProperties().getProperty('localOptions'));
+  customFields = JSON.parse(PropertiesService.getUserProperties().getProperty('customFields'));
   
-  var customFields = getCustomFields();
-  jqlOptions.fields = jqlOptions.fields.concat(customFields.fields);
-  jqlOptions.fieldsNames = jqlOptions.fieldsNames.concat(customFields.fieldsNames);  
+  jqlOptions.fields = jqlOptions.fields.concat(jqlOptions.customFields.map(function(x){return x.value;}));
+  jqlOptions.fieldsNames = jqlOptions.fieldsNames.concat(jqlOptions.customFields.map(function(x){return x.name;}));  
   
   var baseURL = connectOptions.baseURL;
   var jql = jqlOptions.jql;
@@ -354,7 +396,7 @@ function jsonPathToValue(jsonData, path, toLink) {
     }
   }
   
-  var value = formatValue(jsonData, format);
+  var value = formatValue(jsonData, format, path);
   
   if (typeof toLink != 'undefined') 
     return value2link(value, toLink);
@@ -449,7 +491,17 @@ function getPathForType(type, id) {
   return 'fields.' + id;
 }
 
-function formatValue(value, format) {
+function formatValue(value, format, key) {
+  if (key.startsWith('fields.customfield_')) {
+    for (var i = 0; i < jqlOptions.customFields.length; i++){
+      if (jqlOptions.customFields[i].value.indexOf(key) > 0) {
+        if (jqlOptions.customFields[i].regex != "")
+          return value[0].replace(new RegExp(jqlOptions.customFields[i].regex), '$1');
+        else break;
+      }
+    }
+  }
+
   switch(format) {
     case 'duration':
       if (typeof unit == 'undefined') {
@@ -738,7 +790,7 @@ function sortIssueList(list) {
   var keys = list.map(function(x){ return x.info.key; });
   Object.keys(parentBuckets).forEach(function (key) {
     if (keys.indexOf(key) < 0)
-     resultList = resultList.concat(parentBuckets[key]);
+      resultList = resultList.concat(parentBuckets[key]);
   });
   
   var formatList = [];

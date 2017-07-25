@@ -24,7 +24,8 @@
 			<ul>
 			<li><b>JQL Query</b> - A query which you want to fetch. You can create it in JIRA and then copy to this field</li>
 			<li><b>Fields to Show</b> - Fields which will be displayed in table</li>
-			<li><b>Custom Fields</b> - Custom JIRA fields. Must be written the same way JIRA displayes them, for example, <code>Epic Link</code> or <code>Sprint</code></li>
+			<li><b>Custom Fields</b> - Custom JIRA fields. Each custom field has fields for regular expression which allows more control over formatting. Displayed value will be the first regex result.
+			<br>For example field which looks like <code>com.atlassian.greenhopper.service.sprint.Sprint@[id=12,rapidViewId=12,state=ACTIVE,name=12 — Sprint 12,startDate=2012-12-12T12:12:12.121+12:12,endDate=2012-12-12T12:12:12.121+12:12,sequence=12]</code> and with regular expression <code>.*name=(.*)\,startDate.*</code> will fetch sprint name and display just <code>12 — Sprint 12</code></li>
 			</ul>
 			</p>
 			
