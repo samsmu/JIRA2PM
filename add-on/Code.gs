@@ -553,13 +553,13 @@ function formatValue(value, format, key) {
         muteHttpExceptions: true
       };
       
-      var url = connectOptions.baseURL + 'rest/api/2/issue/' + value;
+      var url = connectOptions.baseURL + 'rest/api/2/issue/' + value + '/worklog';
       var httpResponse = UrlFetchApp.fetch(url, fetchArgs);
       if (httpResponse) {
         var responseCode = httpResponse.getResponseCode();
         if (responseCode == 200) {
           var data = JSON.parse(httpResponse.getContentText());
-          var worklogs = data.fields.worklog.worklogs;
+          var worklogs = data.worklogs;
           var worklogsList = [];
           for (var i = 0; i < worklogs.length; i++) {
             var a = worklogs[i].created.split(/[^0-9]/);
