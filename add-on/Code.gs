@@ -603,6 +603,11 @@ function formatValue(value, format, key) {
     case 'textcap':
       return value.substring(0,50000);
     case 'array':
+      // Try casting array to values
+      if (value.length > 0 && value[0].hasOwnProperty('value'))
+        for (var i = 0; i < value.length; i++) 
+          value[i] = value[i].value;
+      
       return value;
     case 'sprint':
       var re = /.*name=(.*)\,startDate.*/;
