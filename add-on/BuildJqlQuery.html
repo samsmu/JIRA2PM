@@ -10,6 +10,15 @@
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css?family=Roboto" rel="stylesheet">
     <link href="https://jira2pm.appspot.com/styles/main.css?v=1.5" rel="stylesheet">
+    <!-- Global Site Tag (gtag.js) - Google Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=UA-106946460-1"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments)};
+      gtag('js', new Date());
+  
+      gtag('config', 'UA-106946460-1');
+    </script>
   </head>
   <body>
     <div class="sidebar branding-below">
@@ -113,7 +122,9 @@
         createCheckBoxes();
         
         google.script.run.withSuccessHandler(loadPreferences)
-            .withFailureHandler(showError).getJqlPreferences();
+            .withFailureHandler(function(msg, element) {
+                showError(msg, $('#error-bar'));
+              }).getJqlPreferences();
         
         $('#next').click(function() {
           this.disabled = true;
@@ -182,7 +193,6 @@
        * @param element The element after which to display the error.
        */
       function showError(msg, element) {
-        stopProgressBar()
         var div = $('<div id="error" class="error">' + msg + '</div>');
         $(element).after(div);
       }
@@ -212,6 +222,7 @@
           "Status": "fields.status.name",
           "Assignee": "user|fields.assignee.displayName",
           "Reporter": "user|fields.reporter.displayName",
+          "Resolution": "fields.resolution.name",
           "Resolution Date": "date|fields.resolutiondate",
           "Created": "date|fields.created",
           "Description": "textcap|fields.description",
@@ -294,13 +305,20 @@
       }
       
       function updateCustoms() {
-        google.script.run.withSuccessHandler(recreateCustoms).withFailureHandler(showError).updateCustomFields();
+        google.script.run.withSuccessHandler(recreateCustoms).withFailureHandler(
+			function(msg, element) {
+                showError(msg, $('#error-bar'));
+			}).updateCustomFields();
       }
       
       function recreateCustoms(customFieldsJSON, withoutSave) {
         var customFields = JSON.parse(customFieldsJSON);
         var checkList = $('#custom-fields');
         checkList.empty();
+        
+        // Don't do anythong if no custom fields
+        if (customFields === null)
+          return;
         
         for (var i = 0;i < customFields.fields.length; i++)
           createCheckBox(customFields.fieldsNames[i], customFields.fields[i], checkList, true);
