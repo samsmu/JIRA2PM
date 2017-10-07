@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html>
-  <head>
+  <head>  
     <base target="_top">
     <link rel="stylesheet" href="https://ssl.gstatic.com/docs/script/css/add-ons1.css">
     <!-- The CSS package above applies Google styling to buttons and other elements. -->
@@ -10,6 +10,15 @@
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css?family=Roboto" rel="stylesheet">
     <link href="https://jira2pm.appspot.com/styles/main.css?v=1.1" rel="stylesheet">
+    <!-- Global Site Tag (gtag.js) - Google Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=UA-106946460-1"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments)};
+      gtag('js', new Date());
+  
+      gtag('config', 'UA-106946460-1');
+    </script>
   </head>
   <body>
     <div class="sidebar branding-below">
@@ -148,17 +157,17 @@
         });
         
         $('#send-request').click(function() {
-          page = {startAt: 0, maxResults: 200}
+          page = {startAt: 0, maxResults: 100}
           google.script.run.withSuccessHandler(paginateRequest).withUserObject(this).sendRequest(JSON.stringify(page));
         });
         
         $('#send-request-clean').click(function() {
-          page = {startAt: 0, maxResults: 200}
+          page = {startAt: 0, maxResults: 100}
           google.script.run.withSuccessHandler(paginateRequest).withUserObject(this).cleanSheetAndSendRequest(JSON.stringify(page));
         });
         
         $('#send-request-insert').click(function() {
-          page = {startAt: 0, maxResults: 200}
+          page = {startAt: 0, maxResults: 100}
           google.script.run.withSuccessHandler(paginateRequest).withUserObject(this).sendRequestAndInsertToNew(JSON.stringify(page));
         });
         
@@ -207,7 +216,7 @@
        * Runs a server-side function to translate the user-selected text and update
        * the sidebar UI with the resulting translation.
        */
-      function saveDisplayOptions() {         
+      function saveDisplayOptions() {
         $('#error').remove();
         var options = {};
         options.dateformat = $('#dateformat').val();
@@ -221,7 +230,7 @@
                 showError(msg, $('#error-bar'));
               })
             .withUserObject(this)
-            .saveDisplayOptions(JSON.stringify(options));       
+            .saveDisplayOptions(JSON.stringify(options));
       }
 
       /**
@@ -231,7 +240,6 @@
        * @param element The element after which to display the error.
        */
       function showError(msg, element) {
-        stopProgressBar()
         var div = $('<div id="error" class="error">' + msg + '</div>');
         $(element).after(div);
       }
