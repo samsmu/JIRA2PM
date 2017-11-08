@@ -30,6 +30,24 @@ function onInstall(e) {
   onOpen(e);
 }
 
+ function sendGaEvent(eventName){
+  var payload = {
+    'v': '1',
+    'tid': 'UA-106946460-1',
+    'cid': '555',
+    't': 'pageview',
+    'dp': '/APP SCRIPT/' + eventName,
+  };
+
+  var options = {
+    'method' : 'post',
+    'payload' : payload
+   };
+
+  // Sending the hit.
+  UrlFetchApp.fetch('http://www.google-analytics.com/collect', options);
+}
+  
 function showSidebar(name, title) {
   var ui = HtmlService.createHtmlOutputFromFile(name)
       .setTitle(title);
@@ -58,9 +76,12 @@ function showConvertToJiraLink() {
 
 function sendRequest(page) {
   sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();  
-  if (page)
+  if (page) {
+    sendGaEvent('sendRequset(Page)');
     return fetchJira_(JSON.parse(page));
+  }
   
+  sendGaEvent('sendRequset');
   fetchJira_();
 }
 
@@ -76,9 +97,11 @@ function cleanSheetAndSendRequest(page) {
 
 function sendRequestAndInsertToNew(page) {
   sheet = SpreadsheetApp.getActiveSpreadsheet().insertSheet();
-  if (page)
+  if (page) {
+    sendGaEvent('sendRequsetAndInsertToNew(Page)');
     return fetchJira_(JSON.parse(page));
-  
+  }
+  sendGaEvent('sendRequsetAndInsertToNew');
   fetchJira_();
 }
 
@@ -101,8 +124,23 @@ function getConnectPreferences() {
   return PropertiesService.getUserProperties().getProperty('connectOptions');
 }
 
+function _getCustomFields() {
+  var properties = PropertiesService.getUserProperties();
+  var customFieldsCount = properties.getProperty('customFieldsCount');
+  
+  // Legacy custom fields support
+  if (customFieldsCount === null)
+    return properties.getProperty('customFields');
+  
+  var customFields = '';
+  for (var i = 0; i < customFieldsCount; i++)
+    customFields += properties.getProperty('customFields_' + i)
+  
+  return customFields;
+}
+  
 function getJqlPreferences() {
-  return JSON.stringify({jqlOptions: PropertiesService.getUserProperties().getProperty('jqlOptions'), customFields: PropertiesService.getUserProperties().getProperty('customFields')});
+  return JSON.stringify({jqlOptions: PropertiesService.getUserProperties().getProperty('jqlOptions'), customFields: _getCustomFields()});
 }
 
 function getDisplayPreferences() {
@@ -163,6 +201,7 @@ function saveSetUpStorageOptions(optionsJSON) {
 }
 
 function updateCustomFields() {
+  sendGaEvent('updateCustomFields');
   var properties = PropertiesService.getUserProperties();
   var connectOptions = JSON.parse(properties.getProperty('connectOptions'));
   if (connectOptions == null) throw 'Setup connection options';
@@ -193,7 +232,11 @@ function updateCustomFields() {
   }
   
   customFields = JSON.stringify(customFields);
-  properties.setProperty('customFields', customFields);
+
+  customFieldsSplit = customFields.match(/.{1,9000}/g);
+  properties.setProperty('customFieldsCount', customFieldsSplit.length);
+  for (var i = 0; i < customFieldsSplit.length; i++)
+    properties.setProperty('customFields_' + i, customFieldsSplit[i]);
   
   return customFields;
 }
@@ -214,7 +257,7 @@ function fetchJira_(page) {
   if (setUpStorageOptions == null) setUpStorageOptions = {refresh: null, refreshCount: 1, refreshMeasurement: 'hours', storage: 'global'};
   
   localOptions = JSON.parse(PropertiesService.getUserProperties().getProperty('localOptions'));
-  customFields = JSON.parse(PropertiesService.getUserProperties().getProperty('customFields'));
+  customFields = JSON.parse(_getCustomFields());
   
   jqlOptions.fields = jqlOptions.fields.concat(jqlOptions.customFields.map(function(x){return x.value;}));
   jqlOptions.fieldsNames = jqlOptions.fieldsNames.concat(jqlOptions.customFields.map(function(x){return x.name;}));  
@@ -604,9 +647,15 @@ function formatValue(value, format, key) {
       return value.substring(0,50000);
     case 'array':
       // Try casting array to values
-      if (value.length > 0 && value[0].hasOwnProperty('value'))
+      if (value.length <= 0)
+        return value;
+      
+      if (value[0].hasOwnProperty('value'))
         for (var i = 0; i < value.length; i++) 
           value[i] = value[i].value;
+      else if (value[0].hasOwnProperty('name'))
+        for (var i = 0; i < value.length; i++) 
+          value[i] = value[i].name;
       
       return value;
     case 'sprint':
@@ -631,6 +680,7 @@ function formatValue(value, format, key) {
         }
       }
   }
+  
   return value.toString();
 }
 
