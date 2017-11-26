@@ -18,7 +18,10 @@
       function gtag(){dataLayer.push(arguments)};
       gtag('js', new Date());
   
-      gtag('config', 'UA-106946460-1');
+      gtag('config', 'UA-106946460-1', {
+        'page_title': 'ConnectToJira',
+        'page_path': '/connectToJira'
+      });
     </script>
   </head>
   <body>
@@ -77,7 +80,7 @@
           google.script.run.withUserObject(this).showBuildJqlQuery();
         });
         google.script.run.withSuccessHandler(loadPreferences)
-            .withFailureHandler(showError).getConnectPreferences();
+            .withFailureHandler(showError).getOptions('connectOptions');
         initFieldsCheck();
       });
       /**
@@ -151,4 +154,5 @@
     </script>
   </body>
 </html>
+
 

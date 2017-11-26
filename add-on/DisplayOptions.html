@@ -17,7 +17,10 @@
       function gtag(){dataLayer.push(arguments)};
       gtag('js', new Date());
   
-      gtag('config', 'UA-106946460-1');
+      gtag('config', 'UA-106946460-1', {
+        'page_title': 'DisplayOptions',
+        'page_path': '/DisplayOptions'
+      });
     </script>
   </head>
   <body>
@@ -144,7 +147,7 @@
        */
       $(function() {
         google.script.run.withSuccessHandler(loadPreferences)
-            .withFailureHandler(showError).getDisplayPreferences();
+            .withFailureHandler(showError).getOptions('displayOptions');
         
         $('#next').click(function() {
           $('#next-menu').slideToggle(500);
@@ -230,7 +233,7 @@
                 showError(msg, $('#error-bar'));
               })
             .withUserObject(this)
-            .saveDisplayOptions(JSON.stringify(options));
+            .setOptions('displayOptions', JSON.stringify(options));
       }
 
       /**
@@ -257,4 +260,5 @@
     </script>
   </body>
 </html>
+
 

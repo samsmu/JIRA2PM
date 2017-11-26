@@ -1,3 +1,4 @@
+
 if (!String.prototype.startsWith) {
     String.prototype.startsWith = function(searchString, position){
       return this.substr(position || 0, searchString.length) === searchString;
@@ -30,6 +31,10 @@ function onInstall(e) {
   onOpen(e);
 }
 
+function _getId() {
+  return SpreadsheetApp.getActiveSpreadsheet().getId();
+}
+
  function sendGaEvent(eventName){
   var payload = {
     'v': '1',
@@ -44,7 +49,7 @@ function onInstall(e) {
     'payload' : payload
    };
 
-  // Sending the hit.
+  // Sending the hit
   UrlFetchApp.fetch('http://www.google-analytics.com/collect', options);
 }
   
@@ -75,6 +80,7 @@ function showConvertToJiraLink() {
 }
 
 function sendRequest(page) {
+  _saveAllLocalToGlobal();
   sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();  
   if (page) {
     sendGaEvent('sendRequset(Page)');
@@ -86,6 +92,7 @@ function sendRequest(page) {
 }
 
 function cleanSheetAndSendRequest(page) {
+  _saveAllLocalToGlobal();
   sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
   sheet.clear();
   
@@ -96,6 +103,7 @@ function cleanSheetAndSendRequest(page) {
 }
 
 function sendRequestAndInsertToNew(page) {
+  _saveAllLocalToGlobal();
   sheet = SpreadsheetApp.getActiveSpreadsheet().insertSheet();
   if (page) {
     sendGaEvent('sendRequsetAndInsertToNew(Page)');
@@ -120,39 +128,95 @@ function convertKeysToLinks(keysJSON) {
   return connectOptions.baseURL + "issues/?jql=key%20in%20(" + encodeURIComponent(keys.join()) + ")";
 }
 
-function getConnectPreferences() {
-  return PropertiesService.getUserProperties().getProperty('connectOptions');
+function getOptions(name) {
+  var props = PropertiesService.getUserProperties();
+
+  var options = props.getProperty(_getId() + name);
+  if (options != null)
+    return options;
+
+  // Save last used options to this document options
+  _saveAllGlobalToLocal();
+  
+  // Try getting options again
+  return props.getProperty(_getId() + name);
+}
+
+function setOptions(name, value) {
+  var props = PropertiesService.getUserProperties();
+
+  props.setProperty(_getId() + name, value);
+  _saveAllLocalToGlobal();
+}
+
+function _saveGlobalToLocal(name) {
+  var props = PropertiesService.getUserProperties();
+  
+  var prop = props.getProperty(name);
+  if (prop != null)
+    props.setProperty(_getId() + name, prop);
+}
+
+function _saveAllGlobalToLocal() {
+  var props = PropertiesService.getUserProperties();
+  
+  _saveGlobalToLocal('connectOptions');
+  _saveGlobalToLocal('customFieldsCount');
+  for (var i = 0; i < props.getProperty('customFieldsCount'); i++)
+    _saveGlobalToLocal('customFields_' +  i);
+  
+  _saveGlobalToLocal('jqlOptions');
+  _saveGlobalToLocal('displayOptions');
+  _saveGlobalToLocal('setUpStorageOptions');
+  _saveGlobalToLocal('localOptions');
+}
+  
+function _saveAllLocalToGlobal() {
+  var props = PropertiesService.getUserProperties();
+  
+  // Check if there is local options
+  var options = props.getProperty(_getId() + 'connectOptions');
+  if (options == null) {
+    // Reverse syncing
+    _saveAllGlobalToLocal();
+    return;
+  }
+  
+  _saveLocalToGlobal('connectOptions');
+  _saveLocalToGlobal('customFieldsCount');
+  for (var i = 0; i < props.getProperty(_getId() + 'customFieldsCount'); i++)
+    _saveLocalToGlobal('customFields_' +  i);
+  
+  _saveLocalToGlobal('jqlOptions');
+  _saveLocalToGlobal('displayOptions');
+  _saveLocalToGlobal('setUpStorageOptions');
+  _saveLocalToGlobal('localOptions');
+}
+  
+function _saveLocalToGlobal(name) {
+  var props = PropertiesService.getUserProperties();
+  
+  var prop = props.getProperty(_getId() + name);
+  if (prop != null)
+    props.setProperty(name, prop);
 }
 
 function _getCustomFields() {
-  var properties = PropertiesService.getUserProperties();
-  var customFieldsCount = properties.getProperty('customFieldsCount');
+  var customFieldsCount = getOptions('customFieldsCount');
   
   // Legacy custom fields support
   if (customFieldsCount === null)
-    return properties.getProperty('customFields');
+    return getOptions('customFields');
   
   var customFields = '';
   for (var i = 0; i < customFieldsCount; i++)
-    customFields += properties.getProperty('customFields_' + i)
+    customFields += getOptions('customFields_' + i)
   
   return customFields;
 }
   
 function getJqlPreferences() {
-  return JSON.stringify({jqlOptions: PropertiesService.getUserProperties().getProperty('jqlOptions'), customFields: _getCustomFields()});
-}
-
-function getDisplayPreferences() {
-  return PropertiesService.getUserProperties().getProperty('displayOptions');
-}
-
-function getSetUpStoragePreferences() {
-  return PropertiesService.getUserProperties().getProperty('setUpStorageOptions');
-}
-
-function getProgressStatus() {
-  return PropertiesService.getDocumentProperties().getProperty('progress');
+  return JSON.stringify({jqlOptions: getOptions('jqlOptions'), customFields: _getCustomFields()});
 }
 
 function connectJira(optionsJSON, localOptionsJSON) {
@@ -182,28 +246,15 @@ function connectJira(optionsJSON, localOptionsJSON) {
   connectOptions.username = options.username;
   connectOptions.baseURL = baseURL;
   connectOptions.ennCred = ennCred;
-  PropertiesService.getUserProperties().setProperty('connectOptions', JSON.stringify(connectOptions));
-  PropertiesService.getUserProperties().setProperty('localOptions', localOptionsJSON);
+  setOptions('connectOptions', JSON.stringify(connectOptions));
+  setOptions('localOptions', localOptionsJSON);
   
   return true;
 }
 
-function saveJqlOptions(optionsJSON) {
-  PropertiesService.getUserProperties().setProperty('jqlOptions', optionsJSON);
-}
-
-function saveDisplayOptions(optionsJSON) {
-  PropertiesService.getUserProperties().setProperty('displayOptions', optionsJSON);
-}
-
-function saveSetUpStorageOptions(optionsJSON) {
-  PropertiesService.getUserProperties().setProperty('setUpStorageOptions', optionsJSON);
-}
-
 function updateCustomFields() {
   sendGaEvent('updateCustomFields');
-  var properties = PropertiesService.getUserProperties();
-  var connectOptions = JSON.parse(properties.getProperty('connectOptions'));
+  var connectOptions = JSON.parse(getOptions('connectOptions'));
   if (connectOptions == null) throw 'Setup connection options';
   
   var customFields = {fields:[], fieldsNames:[]};
@@ -234,29 +285,27 @@ function updateCustomFields() {
   customFields = JSON.stringify(customFields);
 
   customFieldsSplit = customFields.match(/.{1,9000}/g);
-  properties.setProperty('customFieldsCount', customFieldsSplit.length);
+  setOptions('customFieldsCount', customFieldsSplit.length);
   for (var i = 0; i < customFieldsSplit.length; i++)
-    properties.setProperty('customFields_' + i, customFieldsSplit[i]);
+    setOptions('customFields_' + i, customFieldsSplit[i]);
   
   return customFields;
 }
 
 function fetchJira_(page) {
-  var properties = PropertiesService.getUserProperties();
-  
-  connectOptions = JSON.parse(properties.getProperty('connectOptions'));
+  connectOptions = JSON.parse(getOptions('connectOptions'));
   if (connectOptions == null) throw 'Setup connection options';
   
-  jqlOptions = JSON.parse(properties.getProperty('jqlOptions'));
+  jqlOptions = JSON.parse(getOptions('jqlOptions'));
   if (jqlOptions == null) throw 'Setup jql options';
   
-  displayOptions = JSON.parse(properties.getProperty('displayOptions'));
+  displayOptions = JSON.parse(getOptions('displayOptions'));
   if (displayOptions == null) throw 'Setup display options';
   
-  setUpStorageOptions = JSON.parse(properties.getProperty('setUpStorageOptions'));
+  setUpStorageOptions = JSON.parse(getOptions('setUpStorageOptions'));
   if (setUpStorageOptions == null) setUpStorageOptions = {refresh: null, refreshCount: 1, refreshMeasurement: 'hours', storage: 'global'};
   
-  localOptions = JSON.parse(PropertiesService.getUserProperties().getProperty('localOptions'));
+  localOptions = JSON.parse(getOptions('localOptions'));
   customFields = JSON.parse(_getCustomFields());
   
   jqlOptions.fields = jqlOptions.fields.concat(jqlOptions.customFields.map(function(x){return x.value;}));
@@ -864,3 +913,4 @@ function sortIssueList(list) {
   
   return {resultList: resultList, formatList: formatList};
 }
+

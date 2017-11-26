@@ -17,7 +17,10 @@
       function gtag(){dataLayer.push(arguments)};
       gtag('js', new Date());
   
-      gtag('config', 'UA-106946460-1');
+      gtag('config', 'UA-106946460-1', {
+        'page_title': 'SetupStorage',
+        'page_path': '/SetupStorage'
+      });
     </script>
   </head>
   <body>
@@ -60,7 +63,7 @@
        */
       $(function() {
         google.script.run.withSuccessHandler(loadPreferences)
-            .withFailureHandler(showError).getSetUpStoragePreferences();
+            .withFailureHandler(showError).getOptions('setUpStorageOptions');
         init();
       });
       /**
@@ -96,7 +99,7 @@
                 showError(msg, $('#error-bar'));
               })
             .withUserObject(this)
-            .saveSetUpStorageOptions(JSON.stringify(options));
+            .setOptions('setUpStorageOptions', JSON.stringify(options));
       }
 
       /**
@@ -117,4 +120,5 @@
     </script>
   </body>
 </html>
+
 

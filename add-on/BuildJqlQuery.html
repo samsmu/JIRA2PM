@@ -17,7 +17,10 @@
       function gtag(){dataLayer.push(arguments)};
       gtag('js', new Date());
   
-      gtag('config', 'UA-106946460-1');
+      gtag('config', 'UA-106946460-1', {
+        'page_title': 'BuildJqlQuery',
+        'page_path': '/BuildJqlQuery'
+      });
     </script>
   </head>
   <body>
@@ -183,7 +186,7 @@
                 showError(msg, $('#error-bar'));
               })
             .withUserObject(this)
-            .saveJqlOptions(JSON.stringify(options));
+            .setOptions('jqlOptions', JSON.stringify(options));
       }
 
       /**
@@ -218,6 +221,7 @@
           "Key": "key|key",
           "Type": "fields.issuetype.name",
           "Summary": "fields.summary",
+          "Project": "fields.project.name",
           "Priority": "fields.priority.name",
           "Status": "fields.status.name",
           "Assignee": "user|fields.assignee.displayName",
@@ -371,3 +375,4 @@
     </script>
   </body>
 </html>
+
