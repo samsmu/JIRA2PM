@@ -79,22 +79,66 @@ function showConvertToJiraLink() {
   showSidebar('ConvertToJiraLink', 'JIRA2PM :: Convert to JIRA Link');
 }
 
+// Saves current sheet to the user preferences, which can be used later
+// Returns SheetId
+function _saveSheetId() {
+  sheetId = SpreadsheetApp.getActiveSheet().getSheetId();
+  PropertiesService.getUserProperties().setProperty('activeSheetId', sheetId);
+  
+  return sheetId;
+}  
+
+// Saves target sheetId to properties
+function _saveSheetId(sheetId) {
+  PropertiesService.getUserProperties().setProperty('activeSheetId', sheetId);
+  return sheetId;
+}
+  
+  
+// Returns sheet with sheetId in current spreadsheet.
+// Return null if sheet was not find
+function _getSheetById(sheetId) {
+  var sheets = SpreadsheetApp.getActive().getSheets();
+  for (var n in sheets)
+    if (sheets[n].getSheetId() == sheetId)
+      return sheets[n];
+  
+  return null;
+}
+
 function sendRequest(page) {
   _saveAllLocalToGlobal();
-  sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();  
+  
+  // Initialize sheet
+  var sheetId = 0;
+  if (typeof sheet == 'undefined') {
+    if (page && page.startAt == 0)
+      sheetId = _saveSheetId();
+    else 
+      sheetId = PropertiesService.getUserProperties().getProperty('activeSheetId');
+    
+    sheet = _getSheetById(sheetId);
+  }
+  
   if (page) {
     sendGaEvent('sendRequset(Page)');
     return fetchJira_(JSON.parse(page));
   }
   
+  sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
   sendGaEvent('sendRequset');
   fetchJira_();
 }
 
 function cleanSheetAndSendRequest(page) {
   _saveAllLocalToGlobal();
+  
+  if (page && page == 0)
+    _saveSheetId();
+  
   sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
   sheet.clear();
+  _saveSheetId(sheet.getSheetId());
   
   if (page)
     return sendRequest(page);
@@ -105,6 +149,8 @@ function cleanSheetAndSendRequest(page) {
 function sendRequestAndInsertToNew(page) {
   _saveAllLocalToGlobal();
   sheet = SpreadsheetApp.getActiveSpreadsheet().insertSheet();
+  _saveSheetId(sheet.getSheetId());
+  
   if (page) {
     sendGaEvent('sendRequsetAndInsertToNew(Page)');
     return fetchJira_(JSON.parse(page));
