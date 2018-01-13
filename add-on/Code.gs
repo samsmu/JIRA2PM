@@ -52,7 +52,7 @@ function _getId() {
   // Sending the hit
   UrlFetchApp.fetch('http://www.google-analytics.com/collect', options);
 }
-  
+
 function showSidebar(name, title) {
   var ui = HtmlService.createHtmlOutputFromFile(name)
       .setTitle(title);
@@ -84,17 +84,17 @@ function showConvertToJiraLink() {
 function _saveSheetId() {
   sheetId = SpreadsheetApp.getActiveSheet().getSheetId();
   PropertiesService.getUserProperties().setProperty('activeSheetId', sheetId);
-  
+
   return sheetId;
-}  
+}
 
 // Saves target sheetId to properties
 function _saveSheetId(sheetId) {
   PropertiesService.getUserProperties().setProperty('activeSheetId', sheetId);
   return sheetId;
 }
-  
-  
+
+
 // Returns sheet with sheetId in current spreadsheet.
 // Return null if sheet was not find
 function _getSheetById(sheetId) {
@@ -102,55 +102,50 @@ function _getSheetById(sheetId) {
   for (var n in sheets)
     if (sheets[n].getSheetId() == sheetId)
       return sheets[n];
-  
+
   return null;
 }
 
 function sendRequest(page) {
-  _saveAllLocalToGlobal();
-  
   // Initialize sheet
   var sheetId = 0;
   if (typeof sheet == 'undefined') {
     if (page && page.startAt == 0)
       sheetId = _saveSheetId();
-    else 
+    else
       sheetId = PropertiesService.getUserProperties().getProperty('activeSheetId');
-    
+
     sheet = _getSheetById(sheetId);
   }
-  
+
   if (page) {
     sendGaEvent('sendRequset(Page)');
     return fetchJira_(JSON.parse(page));
   }
-  
+
   sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
   sendGaEvent('sendRequset');
   fetchJira_();
 }
 
 function cleanSheetAndSendRequest(page) {
-  _saveAllLocalToGlobal();
-  
   if (page && page == 0)
     _saveSheetId();
-  
+
   sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
   sheet.clear();
   _saveSheetId(sheet.getSheetId());
-  
+
   if (page)
     return sendRequest(page);
-  
+
   sendRequest();
 }
 
 function sendRequestAndInsertToNew(page) {
-  _saveAllLocalToGlobal();
   sheet = SpreadsheetApp.getActiveSpreadsheet().insertSheet();
   _saveSheetId(sheet.getSheetId());
-  
+
   if (page) {
     sendGaEvent('sendRequsetAndInsertToNew(Page)');
     return fetchJira_(JSON.parse(page));
@@ -167,134 +162,109 @@ function getCurrentRangeValues() {
 function convertKeysToLinks(keysJSON) {
   var keys = JSON.parse(keysJSON);
   var connectOptions = JSON.parse(PropertiesService.getUserProperties().getProperty('connectOptions'));
-  
-  if (!connectOptions.baseURL) 
+
+  if (!connectOptions.baseURL)
     throw ("No connection options were found. Please connect to JIRA first");
-  
+
   return connectOptions.baseURL + "issues/?jql=key%20in%20(" + encodeURIComponent(keys.join()) + ")";
 }
 
 function getOptions(name) {
   var props = PropertiesService.getUserProperties();
 
+  // Try getting newer version of local user options
+  var options = props.getProperty(_getId() + 'options');
+  if (options != null) {
+    options = JSON.parse(options);
+    if (options[name])
+      return options[name];
+  }
+
+  // Try getting newer version of user gloabl options
+  options = props.getProperty('globalOptions');
+  if (options != null) {
+    options = JSON.parse(options);
+    if (options[name])
+      return options[name];
+  }
+
+  // Try getting older version of local user options
   var options = props.getProperty(_getId() + name);
   if (options != null)
     return options;
 
-  // Save last used options to this document options
-  _saveAllGlobalToLocal();
-  
-  // Try getting options again
-  return props.getProperty(_getId() + name);
+  // Try getting older version of global user options
+  return props.getProperty(name);
 }
 
 function setOptions(name, value) {
   var props = PropertiesService.getUserProperties();
 
-  props.setProperty(_getId() + name, value);
-  _saveAllLocalToGlobal();
-}
+  // Set to local options first
+  var options = props.getProperty(_getId() + 'options');
+  options = JSON.parse(options);
+  if (options == null)
+    options = {}
+  options[name] = value;
+  props.setProperty(_getId() + 'options', JSON.stringify(options))
 
-function _saveGlobalToLocal(name) {
-  var props = PropertiesService.getUserProperties();
-  
-  var prop = props.getProperty(name);
-  if (prop != null)
-    props.setProperty(_getId() + name, prop);
-}
-
-function _saveAllGlobalToLocal() {
-  var props = PropertiesService.getUserProperties();
-  
-  _saveGlobalToLocal('connectOptions');
-  _saveGlobalToLocal('customFieldsCount');
-  for (var i = 0; i < props.getProperty('customFieldsCount'); i++)
-    _saveGlobalToLocal('customFields_' +  i);
-  
-  _saveGlobalToLocal('jqlOptions');
-  _saveGlobalToLocal('displayOptions');
-  _saveGlobalToLocal('setUpStorageOptions');
-  _saveGlobalToLocal('localOptions');
-}
-  
-function _saveAllLocalToGlobal() {
-  var props = PropertiesService.getUserProperties();
-  
-  // Check if there is local options
-  var options = props.getProperty(_getId() + 'connectOptions');
-  if (options == null) {
-    // Reverse syncing
-    _saveAllGlobalToLocal();
-    return;
-  }
-  
-  _saveLocalToGlobal('connectOptions');
-  _saveLocalToGlobal('customFieldsCount');
-  for (var i = 0; i < props.getProperty(_getId() + 'customFieldsCount'); i++)
-    _saveLocalToGlobal('customFields_' +  i);
-  
-  _saveLocalToGlobal('jqlOptions');
-  _saveLocalToGlobal('displayOptions');
-  _saveLocalToGlobal('setUpStorageOptions');
-  _saveLocalToGlobal('localOptions');
-}
-  
-function _saveLocalToGlobal(name) {
-  var props = PropertiesService.getUserProperties();
-  
-  var prop = props.getProperty(_getId() + name);
-  if (prop != null)
-    props.setProperty(name, prop);
+  // Set global options
+  var options = props.getProperty('globalOptions');
+  options = JSON.parse(options);
+  if (options == null)
+    options = {}
+  options[name] = value;
+  props.setProperty('globalOptions', JSON.stringify(options))
 }
 
 function _getCustomFields() {
   var customFieldsCount = getOptions('customFieldsCount');
-  
+
   // Legacy custom fields support
   if (customFieldsCount === null)
     return getOptions('customFields');
-  
+
   var customFields = '';
   for (var i = 0; i < customFieldsCount; i++)
     customFields += getOptions('customFields_' + i)
-  
+
   return customFields;
 }
-  
+
 function getJqlPreferences() {
   return JSON.stringify({jqlOptions: getOptions('jqlOptions'), customFields: _getCustomFields()});
 }
 
 function connectJira(optionsJSON, localOptionsJSON) {
   var options = JSON.parse(optionsJSON);
-  
+
   var baseURL = options.baseURL;
-  
-  if (['/', '\\'].indexOf(baseURL.slice(-1)) < 0) 
+
+  if (['/', '\\'].indexOf(baseURL.slice(-1)) < 0)
     baseURL = baseURL.concat('/');
-  
+
   var ennCred = Utilities.base64Encode(options.username + ':' + options.password);
-  
+
   var fetchArgs = {
     contentType: 'application/json',
     headers: {'Authorization':'Basic ' + ennCred},
     muteHttpExceptions: true
   };
-  
+
   var httpResponse = UrlFetchApp.fetch(baseURL + 'rest/api/2/search', fetchArgs);
   if (httpResponse) {
     var responseCode = httpResponse.getResponseCode();
-    if (responseCode != 200) 
+    if (responseCode != 200)
       throw "Can't connect!";
   }
-  
+
   var connectOptions = {};
   connectOptions.username = options.username;
   connectOptions.baseURL = baseURL;
   connectOptions.ennCred = ennCred;
-  setOptions('connectOptions', JSON.stringify(connectOptions));
+  setOptions('connectOptions', connectOptions);
   setOptions('localOptions', localOptionsJSON);
-  
+
   return true;
 }
 
@@ -302,23 +272,23 @@ function updateCustomFields() {
   sendGaEvent('updateCustomFields');
   var connectOptions = JSON.parse(getOptions('connectOptions'));
   if (connectOptions == null) throw 'Setup connection options';
-  
+
   var customFields = {fields:[], fieldsNames:[]};
-  
+
   var fetchArgs = {
     contentType: 'application/json',
     headers: {'Authorization':'Basic ' + connectOptions.ennCred},
     muteHttpExceptions: true
   };
-  
+
   var url = connectOptions.baseURL + 'rest/api/2/field';
-  
+
   var httpResponse = UrlFetchApp.fetch(url, fetchArgs);
   if (httpResponse) {
     var responseCode = httpResponse.getResponseCode();
     if (responseCode == 200) {
       var data = JSON.parse(httpResponse.getContentText());
-      
+
       data.map(function(x){
         if (x.custom) {
           customFields.fields.push(getPathForType(x.schema.type, x.id));
@@ -327,39 +297,39 @@ function updateCustomFields() {
       });
     }
   }
-  
+
   customFields = JSON.stringify(customFields);
 
   customFieldsSplit = customFields.match(/.{1,9000}/g);
   setOptions('customFieldsCount', customFieldsSplit.length);
   for (var i = 0; i < customFieldsSplit.length; i++)
     setOptions('customFields_' + i, customFieldsSplit[i]);
-  
+
   return customFields;
 }
 
 function fetchJira_(page) {
   connectOptions = JSON.parse(getOptions('connectOptions'));
   if (connectOptions == null) throw 'Setup connection options';
-  
+
   jqlOptions = JSON.parse(getOptions('jqlOptions'));
   if (jqlOptions == null) throw 'Setup jql options';
-  
+
   displayOptions = JSON.parse(getOptions('displayOptions'));
   if (displayOptions == null) throw 'Setup display options';
-  
+
   setUpStorageOptions = JSON.parse(getOptions('setUpStorageOptions'));
   if (setUpStorageOptions == null) setUpStorageOptions = {refresh: null, refreshCount: 1, refreshMeasurement: 'hours', storage: 'global'};
-  
+
   localOptions = JSON.parse(getOptions('localOptions'));
   customFields = JSON.parse(_getCustomFields());
-  
+
   jqlOptions.fields = jqlOptions.fields.concat(jqlOptions.customFields.map(function(x){return x.value;}));
-  jqlOptions.fieldsNames = jqlOptions.fieldsNames.concat(jqlOptions.customFields.map(function(x){return x.name;}));  
-  
+  jqlOptions.fieldsNames = jqlOptions.fieldsNames.concat(jqlOptions.customFields.map(function(x){return x.name;}));
+
   var baseURL = connectOptions.baseURL;
   var jql = jqlOptions.jql;
-  
+
   var minDif = setUpStorageOptions.refreshCount;
   switch (setUpStorageOptions.refreshMeasurement) {
     case 'days':
@@ -369,44 +339,44 @@ function fetchJira_(page) {
     case 'minutes':
       minDif *= 60 * 1000;
   }
-  
+
   baseURL = baseURL.concat('rest/api/2/search');
   var ennCred = connectOptions.ennCred;
-    
+
   var fetchArgs = {
     contentType: 'application/json',
     headers: {'Authorization':'Basic ' + ennCred},
     muteHttpExceptions: true
   };
-  
+
   // Encode jql
   jql = encodeURIComponent(jql);
-  
+
   jql = '?jql='.concat(jql);
   if (jql.indexOf('maxResults') < 0 && jql.length > 0)
-    if (page) 
+    if (page)
       jql = jql.concat('&startAt=' + page.startAt + '&maxResults=' + page.maxResults);
     else
       jql = jql.concat('&maxResults=1000');
-  
+
   var continuePaging = false;
-  
+
   var httpResponse = UrlFetchApp.fetch(baseURL + jql, fetchArgs);
   if (httpResponse) {
     var responseCode = httpResponse.getResponseCode();
     if (responseCode == 200) {
       var data = JSON.parse(httpResponse.getContentText());
-      
+
       if (page) {
         if (page.startAt == 0)
           updateHeadRow();
-        
+
         appendJira_(data);
-        
+
         continuePaging = data.total > data.maxResults + data.startAt;
       }
       else {
-        // Decide whether we need to append data or to update existant 
+        // Decide whether we need to append data or to update existant
         var lastTimestamp = getLastTimeStamp(minDif);
         updateHeadRow();
         if (lastTimestamp[1] == -1 || !setUpStorageOptions.refresh)
@@ -414,9 +384,9 @@ function fetchJira_(page) {
         else
           appendJira_(data, lastTimestamp[1]);
       }
-      
+
       setupFilter(sheet);
-    } 
+    }
     else {
       switch(responseCode){
         case 401:
@@ -428,17 +398,17 @@ function fetchJira_(page) {
       }
     }
   }
-  else 
+  else
     throw 'Can not access server.';
-  
+
   return JSON.stringify({continuePaging: continuePaging});
 }
 
-function appendJira_(data, fromIndex) { 
+function appendJira_(data, fromIndex) {
   var issues = [];
-  
+
   var timestamp = new Date();
-  
+
   for(var id in data['issues'])
     if(data["issues"][id] && data['issues'][id]['fields']) {
       // Fetch data into array from json
@@ -454,9 +424,9 @@ function appendJira_(data, fromIndex) {
       // Add issue to array
       issues.push({value: values, info: info});
     }
-  
+
   // Delete old values
-  if (!isNaN(fromIndex)) 
+  if (!isNaN(fromIndex))
     sheet.getRange(fromIndex + 2, 1, sheet.getLastRow() - fromIndex - 1, jqlOptions.fields.length + 1).clear();
   /*
   if (displayOptions.sortByParents) {
@@ -465,36 +435,36 @@ function appendJira_(data, fromIndex) {
     formatRows(sortedList.formatList);
   } else */
   issues = issues.map(function(x){return x.value;});
-  
+
   var lastRow = sheet.getLastRow() + 1;
   for (var i = 0; i < jqlOptions.fields.length + 1; i++) {
     var format = "";
     if (i < jqlOptions.fields.length)
       format = jqlOptions.fields[i].split("|")[0];
-    
+
     var slice = issues.map(function(value) { return [value[i]]; });
     var range = sheet.getRange(lastRow, i + 1, issues.length, 1);
-        
+
     if (format == 'text')
       range.setNumberFormat('@')
-    
+
     if (slice[0][0] == '=')
-      range.setFormulas(slice);  
-    else 
-      range.setValues(slice); 
+      range.setFormulas(slice);
+    else
+      range.setValues(slice);
   }
 }
-  
+
 function getFieldsFromNode(node){
   var values = [];
-   
+
   for (var i = 0, len = jqlOptions.fields.length; i < len; i++) {
     if (displayOptions.fields2links.indexOf(jqlOptions.fieldsNames[i]) > -1)
       values.push(jsonPathToValue(node, jqlOptions.fields[i], jqlOptions.fieldsNames[i]));
     else
       values.push(jsonPathToValue(node, jqlOptions.fields[i], void 0));
   }
-  
+
   return values;
 }
 
@@ -508,7 +478,7 @@ function jsonPathToValue(jsonData, path, toLink) {
     path = input[1];
     format = input[0];
   }
-  
+
   path = path.replace(/\[(\w+)\]/g, '.$1'); // convert indexes to properties
   path = path.replace(/^\./, ''); // strip a leading dot
   var pathArray = path.split('.');
@@ -528,62 +498,62 @@ function jsonPathToValue(jsonData, path, toLink) {
       }
     } else {
       var values = jsonData.map(function(x) { return x[key];});
-      if (typeof toLink != 'undefined' && values.length > 0) 
+      if (typeof toLink != 'undefined' && values.length > 0)
         return value2link(values, toLink);
       return values.toString();
     }
   }
-  
+
   var value = formatValue(jsonData, format, path);
-  
-  if (typeof toLink != 'undefined') 
+
+  if (typeof toLink != 'undefined')
     return value2link(value, toLink);
-  
+
   if (Array.isArray(value))
     return value.toString();
-  
+
   return value;
 }
 
 function getLastTimeStamp(msDif) {
   var curDate = new Date();
-  
+
   var values = sheet.getDataRange().getValues();
-  
+
   if (sheet.getLastRow() == 0)
-    return [NaN, -1];  
-  
+    return [NaN, -1];
+
   var date = values[sheet.getLastRow() - 1][jqlOptions.fields.length];
-  
+
   // Unparsable
   if (typeof date == 'undefined')
     return [NaN, -1];
-  
+
   // If not date, don't search
   if (typeof date.getMonth !== 'function')
     return [NaN, -1];
-  
+
   var dif = dateDiffInMS(date, curDate);
-  
+
   // Too old
   if (dif > msDif)
     return [NaN, -1];
-  
+
   var timestampPos = jqlOptions.fields.length;
-  
+
   // Return first date instance in list
   for (var i = sheet.getLastRow() - 1; i >= 0 ; i--) {
     var value = values[i][timestampPos];
     if (typeof value.getMonth !== 'function' || dateDiffInMS(value, curDate) > msDif)
       return [date, i];
   }
-  
+
   return [NaN, -1];
 }
 
 function getCustomFields() {
   var customFields = {fields:[], fieldsNames:[]};
-  
+
   var fetchArgs = {
     contentType: 'application/json',
     headers: {'Authorization':'Basic ' +  connectOptions.ennCred},
@@ -591,23 +561,23 @@ function getCustomFields() {
   };
 
   var url = connectOptions.baseURL + 'rest/api/2/field';
-  
+
   var httpResponse = UrlFetchApp.fetch(url, fetchArgs);
   if (httpResponse) {
     var responseCode = httpResponse.getResponseCode();
     if (responseCode == 200) {
       var data = JSON.parse(httpResponse.getContentText());
-      
+
       data.map(function(x){
         if (jqlOptions.customFields.indexOf(x.name) > -1) {
-          
+
           customFields.fields.push(getPathForType(x.schema.type, x.id));
           customFields.fieldsNames.push(x.name);
         }
       });
     }
   }
-  
+
   return customFields;
 }
 
@@ -624,7 +594,7 @@ function getPathForType(type, id) {
     case 'user':
       return 'user|fields.' + id + '.displayName'
   }
-  
+
   // Case any
   return 'fields.' + id;
 }
@@ -668,9 +638,9 @@ function formatValue(value, format, key) {
         headers: {'Authorization':'Basic ' +  connectOptions.ennCred},
         muteHttpExceptions: true
       };
-      
+
       var url = connectOptions.baseURL + 'rest/api/2/issue/' + value + '?expand=attachment';
-      
+
       var httpResponse = UrlFetchApp.fetch(url, fetchArgs);
       if (httpResponse) {
         var responseCode = httpResponse.getResponseCode();
@@ -683,14 +653,14 @@ function formatValue(value, format, key) {
           }).join(', ');
         }
       }
-      
+
     case 'worklog':
       var fetchArgs = {
         contentType: 'application/json',
         headers: {'Authorization':'Basic ' +  connectOptions.ennCred},
         muteHttpExceptions: true
       };
-      
+
       var url = connectOptions.baseURL + 'rest/api/2/issue/' + value + '/worklog';
       var httpResponse = UrlFetchApp.fetch(url, fetchArgs);
       if (httpResponse) {
@@ -705,22 +675,22 @@ function formatValue(value, format, key) {
             if (a.length > 3)
               date = date2str(new Date(Date.UTC(a[0], a[1] - 1, a[2], a[3]-a[6]/100, a[4], a[5])), displayOptions.dateformat);
             else
-              date = date2str(new Date(Date.UTC(a[0], a[1] - 1, a[2])), displayOptions.dateformat); 
-            
+              date = date2str(new Date(Date.UTC(a[0], a[1] - 1, a[2])), displayOptions.dateformat);
+
             worklogsList.push(worklogs[i].author.displayName + ' | ' + worklogs[i].timeSpent + ' | ' + date);
           }
-          
+
           return worklogsList.join('\n');
         }
       }
-      
+
     case 'prLink':
       var fetchArgs = {
         contentType: 'application/json',
         headers: {'Authorization':'Basic ' +  connectOptions.ennCred},
         muteHttpExceptions: true
       };
-      
+
       var prList = [];
       for (var i=0; i<reposTypes.length; i++) {
         var url = connectOptions.baseURL + 'rest/dev-status/1.0/issue/detail?issueId=' + value + '&applicationType=' + reposTypes[i] + '&dataType=pullrequest';
@@ -734,7 +704,7 @@ function formatValue(value, format, key) {
           }
         }
       }
-      
+
       return prList.join('\n');
     case 'text':
       return '"' + value + '"';
@@ -744,14 +714,14 @@ function formatValue(value, format, key) {
       // Try casting array to values
       if (value.length <= 0)
         return value;
-      
+
       if (value[0].hasOwnProperty('value'))
-        for (var i = 0; i < value.length; i++) 
+        for (var i = 0; i < value.length; i++)
           value[i] = value[i].value;
       else if (value[0].hasOwnProperty('name'))
-        for (var i = 0; i < value.length; i++) 
+        for (var i = 0; i < value.length; i++)
           value[i] = value[i].name;
-      
+
       return value;
     case 'sprint':
       var re = /.*name=(.*)\,startDate.*/;
@@ -763,9 +733,9 @@ function formatValue(value, format, key) {
         headers: {'Authorization':'Basic ' +  connectOptions.ennCred},
         muteHttpExceptions: true
       };
-      
+
       var url = connectOptions.baseURL + 'rest/api/2/search?jql=key=' + value;
-      
+
       var httpResponse = UrlFetchApp.fetch(url, fetchArgs);
       if (httpResponse) {
         var responseCode = httpResponse.getResponseCode();
@@ -775,35 +745,35 @@ function formatValue(value, format, key) {
         }
       }
   }
-  
+
   return value.toString();
 }
 
 function value2link(value, field) {
   var link = '';
-  
+
   if (Array.isArray(value)) {
     if (value.length < 1)
       return value.toString();
-    
+
     field = fieldName2jqlName(field);
     var displayedName = value.toString();
     link = connectOptions.baseURL + 'issues/?jql=' + field + '=' + encodeURIComponent('"' + value.pop() + '"');
     value.forEach(function(x) { link += ' AND ' + field + '=' + encodeURIComponent('"' + x + '"'); });
-    return '=HYPERLINK("' + link + '";"' + displayedName + '")'; 
+    return '=HYPERLINK("' + link + '";"' + displayedName + '")';
   }
   else {
-    if (field == 'Key' || field == 'Epic' || field == 'Parent Key') 
+    if (field == 'Key' || field == 'Epic' || field == 'Parent Key')
       link = connectOptions.baseURL + 'browse/' + value;
-    else   
+    else
       link = connectOptions.baseURL + 'issues/?jql=' + fieldName2jqlName(field) + '=' + encodeURIComponent('"' + value + '"');
   }
-  
+
   return '=HYPERLINK("' + link + '";"' + value + '")';
 }
 
 function date2str(x, y) {
-  
+
   var z = {
     M: x.getMonth() + 1,
     D: x.getDate(),
@@ -814,7 +784,7 @@ function date2str(x, y) {
   y = y.replace(/(M+|D+|h+|m+|s+)/g, function(v) {
     return ((v.length > 1 ? '0' : '') + eval('z.' + v.slice(-1))).slice(-2)
   });
-  
+
   return y.replace(/(Y+)/g, function(v) {
     return x.getFullYear().toString().slice(-v.length)
   });
@@ -823,12 +793,12 @@ function date2str(x, y) {
 function updateHeadRow() {
   var fieldsNames = jqlOptions.fieldsNames;
   fieldsNames.push('Timestamp');
-  
+
   // Remove leftover fields
   if (sheet.getLastColumn() > fieldsNames.length) {
-    sheet.getRange(1, fieldsNames.length + 1, 1, sheet.getLastColumn() - fieldsNames.length + 1).clear();  
+    sheet.getRange(1, fieldsNames.length + 1, 1, sheet.getLastColumn() - fieldsNames.length + 1).clear();
   }
-  
+
   // Update old fields
   var range = sheet.getRange(1, 1, 1, fieldsNames.length);
   range.setValues([fieldsNames]);
@@ -848,9 +818,9 @@ function dateDiffInMS(a, b) {
 function setupFilter() {
   // Create filters
   var ss = SpreadsheetApp.getActiveSpreadsheet();
-  
+
   var filterSettings = {};
-  
+
   // The range of data on which you want to apply the filter.
   // optional arguments: startRowIndex, startColumnIndex, endRowIndex, endColumnIndex
   filterSettings.range = {
@@ -860,7 +830,7 @@ function setupFilter() {
     startColumnIndex: 0,
     endColumnIndex: jqlOptions.fields.length + 1
   };
-  
+
   var request = {
     'setBasicFilter': {
       'filter': filterSettings
@@ -871,7 +841,7 @@ function setupFilter() {
 
 function fieldName2jqlName(fieldName) {
   switch (fieldName) {
-    case 'Components': 
+    case 'Components':
       return 'component';
     case 'Fix Version/s':
       return 'fixVersion';
@@ -884,7 +854,7 @@ function fieldName2jqlName(fieldName) {
 function formatRows(rowsIndexes) {
   rowsIndexes.forEach(function(x){
     var range = sheet.getRange(x + 1, 1, 1, jqlOptions.fields.length + 1);
-    
+
     range.setBackground('#111');
     range.setFontColor('#eee');
   });
@@ -892,14 +862,14 @@ function formatRows(rowsIndexes) {
 
 function sortIssueList(list) {
   var resultList = [];
-  
+
   var emptyRow = Array.apply(null, Array(list[0].value.length)).map(String.prototype.valueOf,"")
-  
+
   // Do a very very slow bucket sort
   epicBuckets = {'undefined': {'bucketList':[], 'bucketRoot':emptyRow}};
-  
+
   parentBuckets = {};
-  
+
   list.forEach(function(x) {
     if (x.info.epic != null)
       if (x.info.epic in epicBuckets)
@@ -907,15 +877,15 @@ function sortIssueList(list) {
       else
         epicBuckets[x.info.epic] = {'bucketList':[x], 'bucketRoot':emptyRow};
     else
-      if (x.info.parent != null) 
+      if (x.info.parent != null)
         if (x.info.parent in parentBuckets)
           parentBuckets[x.info.parent].push(x.value);
         else
           parentBuckets[x.info.parent] = [x.value];
-      else 
+      else
         epicBuckets['undefined'].bucketList.push(x);
   });
-  
+
   // Find all possible bucket roots
   epicBuckets['undefined'].bucketList = epicBuckets['undefined'].bucketList.filter(function(x){
     if (x.info.key in epicBuckets) {
@@ -924,7 +894,7 @@ function sortIssueList(list) {
     }
     return true;
   });
-  
+
   var undefList = [];
   epicBuckets['undefined'].bucketList.forEach(function(x){
     undefList = undefList.concat([x.value]);
@@ -934,17 +904,17 @@ function sortIssueList(list) {
   // Create a list from buckets
   resultList = resultList.concat(undefList);
   delete epicBuckets['undefined'];
-  
-  
+
+
   // Add all fields without parents
   var keys = list.map(function(x){ return x.info.key; });
   Object.keys(parentBuckets).forEach(function (key) {
     if (keys.indexOf(key) < 0)
       resultList = resultList.concat(parentBuckets[key]);
   });
-  
+
   var formatList = [];
-  
+
   Object.keys(epicBuckets).forEach(function (key) {
     resultList.push(epicBuckets[key].bucketRoot);
     formatList.push(resultList.length);
@@ -956,7 +926,6 @@ function sortIssueList(list) {
     });
     resultList = resultList.concat(tempList);
   });
-  
+
   return {resultList: resultList, formatList: formatList};
 }
-
