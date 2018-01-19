@@ -262,8 +262,8 @@ function connectJira(optionsJSON, localOptionsJSON) {
   connectOptions.username = options.username;
   connectOptions.baseURL = baseURL;
   connectOptions.ennCred = ennCred;
-  setOptions('connectOptions', connectOptions);
-  setOptions('localOptions', localOptionsJSON);
+  setOptions('connectOptions', JSON.stringify(connectOptions));
+  setOptions('localOptions', JSON.stringify(localOptionsJSON));
 
   return true;
 }
