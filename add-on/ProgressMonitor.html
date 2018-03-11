@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <link rel="stylesheet" href="https://ssl.gstatic.com/docs/script/css/add-ons1.css">
+    <!-- The CSS package above applies Google styling to buttons and other elements. -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css?family=Roboto" rel="stylesheet">
+    <link href="https://jira2pm.appspot.com/styles/main.css?v=1.1" rel="stylesheet">
+    <!-- Global Site Tag (gtag.js) - Google Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=UA-106946460-1"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments)};
+      gtag('js', new Date());
+
+      gtag('config', 'UA-106946460-1', {
+        'page_title': 'ProgressMonitor',
+        'page_path': '/ProgressMonitor'
+      });
+    </script>
+    <style>
+      #svg circle {
+        -webkit-transition: 200ms ease-in-out;
+        transition: 200ms ease-in-out;
+        stroke-dashoffset: 0;
+        stroke: #404040;
+        stroke-width: 1em;
+      }
+      #svg #bar {
+        stroke: #0000FF;
+      }
+      #svg #bar.success {
+        stroke: #00FF00;
+      }
+      #svg #bar.error {
+        stroke: #FF0000;
+      }
+
+      #cont {
+        display: block;
+        height: 200px;
+        width: 200px;
+        margin: 2em auto;
+        border-radius: 100%;
+        position: relative;
+      }
+      #cont:after {
+        position: absolute;
+        display: block;
+        left: 50%;
+        top: 50%;
+        content: attr(data-pct)"%";
+        -webkit-transform: translate(-50%, -50%);
+        transform: translate(-50%, -50%);
+        border-radius: 100%;
+        font-size: 2em;
+      }
+
+      .flex-wrapper {
+        height: 873px;
+        width: 300px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        flex-direction: column;
+      }
+      </style>
+    </head>
+  <body>
+    <div class="flex-wrapper">
+      <div id="cont" data-pct="100">
+        <svg id="svg" width="200" height="200" viewPort="0 0 100 100" version="1.1" xmlns="http://www.w3.org/2000/svg">
+          <circle r="90" cx="100" cy="100" fill="transparent" stroke-dasharray="565.48" stroke-dashoffset="0"></circle>
+          <circle id="bar" r="90" cx="100" cy="100" fill="transparent" stroke-dasharray="565.48" stroke-dashoffset="0"></circle>
+        </svg>
+      </div>
+      <div id="text-progress">
+        0/0
+      </div>
+    </div>
+    <script>
+      var page = {startAt: 0, maxResults: 100};
+
+      updateProgressBar(0);
+
+      $(function() {
+        google.script.run
+          .withSuccessHandler(paginateRequest)
+          .withFailureHandler(showError)
+          .withUserObject(this).useLastAction(JSON.stringify(page));
+      });
+
+      function updateProgressBar(val) {
+        var $circle = $('#svg #bar');
+
+        var r = $circle.attr('r');
+        var c = Math.PI*(r*2);
+
+        var pct = ((100-val)/100)*c;
+
+        $circle.css({ strokeDashoffset: pct});
+        $('#cont').attr('data-pct',val);
+
+        if (val >= 100)
+          $circle.addClass('success');
+      }
+
+      function showError(msg) {
+        var div = $('<div id="error" class="error">' + msg + '</div>');
+        $('#text-progress').after(div);
+
+        $('#svg #bar').addClass('error');
+      }
+
+      function paginateRequest(result) {
+        var result = JSON.parse(result);
+
+        // Update progress bar
+        var val = Math.floor((result.curResult / result.maxResults) * 100);
+        updateProgressBar(val);
+        $('#text-progress').text(result.curResult + '/' + result.maxResults);
+
+        if (result.continuePaging) {
+          page.startAt += page.maxResults;
+          google.script.run
+            .withSuccessHandler(paginateRequest)
+            .withFailureHandler(showError)
+            .withUserObject(this)
+            .useLastAction(JSON.stringify(page));
+        }
+      }
+
+    </script>
+  </body>
+</html>

@@ -35,7 +35,7 @@ function _getId() {
   return SpreadsheetApp.getActiveSpreadsheet().getId();
 }
 
- function sendGaEvent(eventName){
+function sendGaEvent(eventName){
   var payload = {
     'v': '1',
     'tid': 'UA-106946460-1',
@@ -94,6 +94,19 @@ function _saveSheetId(sheetId) {
   return sheetId;
 }
 
+// Sets user last desired action\
+// Possible options - regular, clear, insert_new
+function _setLastAction(action) {
+  PropertiesService.getUserProperties().setProperty('lastAction', action);
+  return action;
+}
+
+function _getLastAction() {
+  var action = PropertiesService.getUserProperties().getProperty('lastAction');
+  if (action == null)
+    return 'regular';
+  return action;
+}
 
 // Returns sheet with sheetId in current spreadsheet.
 // Return null if sheet was not find
@@ -106,52 +119,51 @@ function _getSheetById(sheetId) {
   return null;
 }
 
-function sendRequest(page) {
-  // Initialize sheet
+// Uses last user action with selected page of results
+function useLastAction(pageJSON) {
+  // Get sheet ID
   var sheetId = 0;
-  if (typeof sheet == 'undefined') {
-    if (page && page.startAt == 0)
-      sheetId = _saveSheetId();
-    else
-      sheetId = PropertiesService.getUserProperties().getProperty('activeSheetId');
+  var page = JSON.parse(pageJSON);
 
+  // Initialization for first page
+  if (page.startAt == 0) {
+    var action = _getLastAction();
+    // Diferent actions for different user actions
+    switch (action) {
+      default:
+      case "regular":
+        sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+        break;
+      case "clear":
+        sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+        sheet.clear();
+        break;
+      case "insert_new":
+        sheet = SpreadsheetApp.getActiveSpreadsheet().insertSheet();
+        break;
+    }
+    sheetId = _saveSheetId(sheet.getSheetId());
+  } else {
+    sheetId = PropertiesService.getUserProperties().getProperty('activeSheetId');
     sheet = _getSheetById(sheetId);
   }
 
-  if (page) {
-    sendGaEvent('sendRequset(Page)');
-    return fetchJira_(JSON.parse(page));
-  }
-
-  sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
-  sendGaEvent('sendRequset');
-  fetchJira_();
+  return _fetchJira(page);
 }
 
-function cleanSheetAndSendRequest(page) {
-  if (page && page == 0)
-    _saveSheetId();
-
-  sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
-  sheet.clear();
-  _saveSheetId(sheet.getSheetId());
-
-  if (page)
-    return sendRequest(page);
-
-  sendRequest();
+function sendRequest() {
+  _setLastAction('regular');
+  showSidebar('ProgressMonitor.html', 'JIRA2PM :: Progress Monitor');
 }
 
-function sendRequestAndInsertToNew(page) {
-  sheet = SpreadsheetApp.getActiveSpreadsheet().insertSheet();
-  _saveSheetId(sheet.getSheetId());
+function cleanSheetAndSendRequest() {
+  _setLastAction('clear');
+  showSidebar('ProgressMonitor.html', 'JIRA2PM :: Progress Monitor');
+}
 
-  if (page) {
-    sendGaEvent('sendRequsetAndInsertToNew(Page)');
-    return fetchJira_(JSON.parse(page));
-  }
-  sendGaEvent('sendRequsetAndInsertToNew');
-  fetchJira_();
+function sendRequestAndInsertToNew() {
+  _setLastAction('insert_new');
+  showSidebar('ProgressMonitor.html', 'JIRA2PM :: Progress Monitor');
 }
 
 function getCurrentRangeValues() {
@@ -263,7 +275,7 @@ function connectJira(optionsJSON, localOptionsJSON) {
   connectOptions.baseURL = baseURL;
   connectOptions.ennCred = ennCred;
   setOptions('connectOptions', JSON.stringify(connectOptions));
-  setOptions('localOptions', JSON.stringify(localOptionsJSON));
+  setOptions('localOptions', localOptionsJSON);
 
   return true;
 }
@@ -308,7 +320,7 @@ function updateCustomFields() {
   return customFields;
 }
 
-function fetchJira_(page) {
+function _fetchJira(page) {
   connectOptions = JSON.parse(getOptions('connectOptions'));
   if (connectOptions == null) throw 'Setup connection options';
 
@@ -360,6 +372,8 @@ function fetchJira_(page) {
       jql = jql.concat('&maxResults=1000');
 
   var continuePaging = false;
+  var totalResults = 0;
+  var curResult = 0;
 
   var httpResponse = UrlFetchApp.fetch(baseURL + jql, fetchArgs);
   if (httpResponse) {
@@ -374,6 +388,8 @@ function fetchJira_(page) {
         appendJira_(data);
 
         continuePaging = data.total > data.maxResults + data.startAt;
+        maxResults = data.total;
+        curResult = Math.min(data.maxResults + data.startAt, data.total);
       }
       else {
         // Decide whether we need to append data or to update existant
@@ -401,7 +417,7 @@ function fetchJira_(page) {
   else
     throw 'Can not access server.';
 
-  return JSON.stringify({continuePaging: continuePaging});
+  return JSON.stringify({continuePaging: continuePaging, maxResults: maxResults, curResult: curResult});
 }
 
 function appendJira_(data, fromIndex) {
@@ -904,7 +920,6 @@ function sortIssueList(list) {
   // Create a list from buckets
   resultList = resultList.concat(undefList);
   delete epicBuckets['undefined'];
-
 
   // Add all fields without parents
   var keys = list.map(function(x){ return x.info.key; });
