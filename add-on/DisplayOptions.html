@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html>
-  <head>  
+  <head>
     <base target="_top">
     <link rel="stylesheet" href="https://ssl.gstatic.com/docs/script/css/add-ons1.css">
     <!-- The CSS package above applies Google styling to buttons and other elements. -->
@@ -16,7 +16,7 @@
       window.dataLayer = window.dataLayer || [];
       function gtag(){dataLayer.push(arguments)};
       gtag('js', new Date());
-  
+
       gtag('config', 'UA-106946460-1', {
         'page_title': 'DisplayOptions',
         'page_path': '/DisplayOptions'
@@ -25,77 +25,77 @@
   </head>
   <body>
     <div class="sidebar branding-below">
-      <form id="mainform">                 
-        
-        
+      <form id="mainform">
+
+
         <div class="panel panel-default">
           <div class="panel-heading">Fields Displayed as Hyperlinks</div>
           <div id="asLinks" class="panel-body">
-            
+
             <div class="form-group">
               <input class="magic-checkbox" type="checkbox" name="layout" id="key" value="Key">
               <label class="pull-left" for="key"></label>
               <label class="pull-left text" for="key">Key</label>
               <div class="spacer"></div>
             </div>
-            
+
             <div class="form-group">
               <input class="magic-checkbox" type="checkbox" name="layout" id="sprint" value="Sprint">
               <label class="pull-left" for="sprint"></label>
               <label class="pull-left text" for="sprint">Sprint</label>
               <div class="spacer"></div>
             </div>
-            
+
             <div class="form-group">
               <input class="magic-checkbox" type="checkbox" name="layout" id="components" value="Components">
               <label class="pull-left" for="components"></label>
               <label class="pull-left text" for="components">Components</label>
               <div class="spacer"></div>
             </div>
-            
+
             <div class="form-group">
               <input class="magic-checkbox" type="checkbox" name="layout" id="labels" value="Labels">
               <label class="pull-left" for="labels"></label>
               <label class="pull-left text" for="labels">Labels</label>
               <div class="spacer"></div>
             </div>
-            
+
             <div class="form-group">
               <input class="magic-checkbox" type="checkbox" name="layout" id="fixed-version" value="Fix Version/s">
               <label class="pull-left" for="fixed-version"></label>
               <label class="pull-left text" for="fixed-version">Fix Version</label>
               <div class="spacer"></div>
             </div>
-            
+
             <div class="form-group">
               <input class="magic-checkbox" type="checkbox" name="layout" id="affected-version" value="Affected Version/s">
               <label class="pull-left" for="affected-version"></label>
               <label class="pull-left text" for="affected-version">Affected Version</label>
               <div class="spacer"></div>
             </div>
-            
+
             <div class="form-group">
               <input class="magic-checkbox" type="checkbox" name="layout" id="epic" value="Epic">
               <label class="pull-left" for="epic"></label>
               <label class="pull-left text" for="epic">Epic</label>
               <div class="spacer"></div>
             </div>
-            
+
             <div class="form-group">
               <input class="magic-checkbox" type="checkbox" name="layout" id="parent" value="Parent Key">
               <label class="pull-left" for="parent"></label>
               <label class="pull-left text" for="parent">Parent Key</label>
               <div class="spacer"></div>
             </div>
-            
+
           </div>
         </div>
-        
+
         <div class="form-group">
           <label for="dateformat">Date Format</label>
           <input type="text" class="form-control" id="dateformat" value="DD.MM.YYYY">
         </div>
-        
+
         <div class="form-group" id="estimationUnitForm">
           <label class="text" for="estimationUnit">Estimation Unit</label><br>
           <input type="radio" name="estimationUnit" value="hours" checked>Hours<br>
@@ -103,7 +103,7 @@
           <input type="radio" name="estimationUnit" value="days">Days<br>
           <input type="radio" name="estimationUnit" value="weeks">Weeks<br>
         </div>
-        
+
         <!--
         <div class="form-group">
           <input class="magic-checkbox" type="checkbox" name="layout" id="parentSort" value="parentSort">
@@ -112,15 +112,15 @@
           <div class="spacer"></div>
         </div>
         -->
-        
+
       </form>
-      
+
       <div id="error-bar">
       </div>
-      
+
     </div>
-    
-    <div class="sidebar bottom">     
+
+    <div class="sidebar bottom">
       <div id="next-menu">
         <button type="button" class="white btn-block" id="send-request">
           <div class="title">Send Request</div>
@@ -148,70 +148,67 @@
       $(function() {
         google.script.run.withSuccessHandler(loadPreferences)
             .withFailureHandler(showError).getOptions('displayOptions');
-        
+
         $('#next').click(function() {
           $('#next-menu').slideToggle(500);
           $(this).toggleClass('active');
         });
-        
+
         $('#back').click(function() {
           this.disabled = true;
           google.script.run.withUserObject(this).showDisplayOptions();
         });
-        
+
         $('#send-request').click(function() {
-          page = {startAt: 0, maxResults: 100}
-          google.script.run.withSuccessHandler(paginateRequest).withUserObject(this).sendRequest(JSON.stringify(page));
+          google.script.run.sendRequest();
         });
-        
+
         $('#send-request-clean').click(function() {
-          page = {startAt: 0, maxResults: 100}
-          google.script.run.withSuccessHandler(paginateRequest).withUserObject(this).cleanSheetAndSendRequest(JSON.stringify(page));
+          google.script.run.cleanSheetAndSendRequest();
         });
-        
+
         $('#send-request-insert').click(function() {
-          page = {startAt: 0, maxResults: 100}
-          google.script.run.withSuccessHandler(paginateRequest).withUserObject(this).sendRequestAndInsertToNew(JSON.stringify(page));
+          google.script.run.sendRequestAndInsertToNew();
         });
-        
+
         $('#back').click(function() {
           this.disabled = true;
           google.script.run.withUserObject(this).showBuildJqlQuery();
         });
-        
+
         init();
-        
+
         $('.panel-heading').click(function() {
           $(this).parent().find('.panel-body').slideToggle(500);
           $(this).toggleClass("active");
         });
       });
-      
+
       function paginateRequest(result) {
         var result = JSON.parse(result);
-        
+
         page.startAt += page.maxResults;
-        
-        if (result.continuePaging) 
+
+        if (result.continuePaging)
             google.script.run.withSuccessHandler(paginateRequest).withUserObject(this).sendRequest(JSON.stringify(page));
       }
-      
+
       /**
        * Callback function that populates input fields.
        */
       function loadPreferences(userPrefs) {
         var options = JSON.parse(userPrefs);
-        
+
         //$("input[type=checkbox][value=parentSort]").prop("checked",options.sortByParents);
-        
+
         if (typeof options.dateformat !== 'undefined') {
           $('#dateformat').val(options.dateformat);
         }
-        
-        for (var i = 0, len = options.fields2links.length; i < len; i++) 
+
+        for (var i = 0, len = options.fields2links.length; i < len; i++)
           $('input[type=checkbox][value="' + options.fields2links[i] + '"]').prop("checked", true);
-        
-        if (options.estimationUnit) 
+
+        if (options.estimationUnit)
           $('input[name=estimationUnit][value="' + options.estimationUnit + '"]').prop('checked', true);
       }
 
@@ -226,7 +223,7 @@
         options.fields2links = getFields2Link();
         options.estimationUnit = $('input[name=estimationUnit]:checked').val();
         //options.sortByParents = $('#parentSort').prop("checked")
-        
+
         google.script.run
             .withFailureHandler(
               function(msg, element) {
@@ -246,13 +243,13 @@
         var div = $('<div id="error" class="error">' + msg + '</div>');
         $(element).after(div);
       }
-      
+
       function getFields2Link() {
         return $("#asLinks input:checkbox:checked").map(function(){
           return $(this).val();
         }).get();
       }
-      
+
       function init() {
         $('input').change(function() {saveDisplayOptions();});
         $('#dateformat').keyup(function() {saveDisplayOptions();});
@@ -260,5 +257,3 @@
     </script>
   </body>
 </html>
-
-

@@ -16,7 +16,7 @@
       window.dataLayer = window.dataLayer || [];
       function gtag(){dataLayer.push(arguments)};
       gtag('js', new Date());
-  
+
       gtag('config', 'UA-106946460-1', {
         'page_title': 'SetupStorage',
         'page_path': '/SetupStorage'
@@ -26,7 +26,7 @@
   <body>
     <div class="sidebar">
       <form id="mainform">
-        
+
         <div class="form-group" id="refreshOptions">
           <div class="form-group">
             <input class="magic-checkbox" type="checkbox" name="layout" id="refresh" value="refresh">
@@ -42,20 +42,20 @@
           </select>
           <br>
         </div>
-                
+
         <div class="form-group" id="storage">
           <label class="text" for="storage">Storage</label><br>
           <input type="radio" name="storage" value="global" checked>Global<br>
           <input type="radio" name="storage" value="local">Local<br>
         </div>
-        
+
       </form>
-      
+
       <div id="error-bar">
       </div>
-      
+
     </div>
-    
+
     <script>
       /**
        * On document load, assign click handlers to each button and try to load the
@@ -71,13 +71,13 @@
        */
       function loadPreferences(userPrefs) {
         var options = JSON.parse(userPrefs);
-        
+
         $("input[type=checkbox][value=refresh]").prop("checked",options.refresh);
         $("#refreshCount").val(options.refreshCount || 1);
-        if (options.refreshMeasurement) 
+        if (options.refreshMeasurement)
           $("#refreshMeasurement").val(options.refreshMeasurement);
-        
-        if (options.storage) 
+
+        if (options.storage)
           $("input[name=storage][value=" + options.storage + "]").prop('checked', true);
       }
 
@@ -85,14 +85,14 @@
        * Runs a server-side function to translate the user-selected text and update
        * the sidebar UI with the resulting translation.
        */
-      function saveStorageOptions() { 
+      function saveStorageOptions() {
         $('#error').remove();
         var options = {};
         options.refresh = $('#refresh').prop("checked");
         options.refreshCount = $('#refreshCount').val();
         options.refreshMeasurement = $('#refreshMeasurement').val();
         options.storage = $('input[name=storage]:checked').val();
-        
+
         google.script.run
             .withFailureHandler(
               function(msg, element) {
@@ -120,5 +120,3 @@
     </script>
   </body>
 </html>
-
-
