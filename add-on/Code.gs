@@ -334,7 +334,15 @@ function _fetchJira(page) {
   if (setUpStorageOptions == null) setUpStorageOptions = {refresh: null, refreshCount: 1, refreshMeasurement: 'hours', storage: 'global'};
 
   localOptions = JSON.parse(getOptions('localOptions'));
-  customFields = JSON.parse(_getCustomFields());
+  
+  var customFieldsJson = _getCustomFields();
+  try {
+    customFields = JSON.parse(_getCustomFields()); 
+  }
+  catch(err) {
+    console.error("Couldn't parse custom field: " + customFieldsJson);
+    customFields = [];
+  }
 
   jqlOptions.fields = jqlOptions.fields.concat(jqlOptions.customFields.map(function(x){return x.value;}));
   jqlOptions.fieldsNames = jqlOptions.fieldsNames.concat(jqlOptions.customFields.map(function(x){return x.name;}));
@@ -944,3 +952,4 @@ function sortIssueList(list) {
 
   return {resultList: resultList, formatList: formatList};
 }
+
