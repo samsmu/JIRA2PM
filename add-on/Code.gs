@@ -312,11 +312,11 @@ function updateCustomFields() {
 
   customFields = JSON.stringify(customFields);
 
-  customFieldsSplit = customFields.match(/.{1,9000}/g);
+  customFieldsSplit = customFields.match(/.{1,115}/g);
   setOptions('customFieldsCount', customFieldsSplit.length);
   for (var i = 0; i < customFieldsSplit.length; i++)
     setOptions('customFields_' + i, customFieldsSplit[i]);
-
+  
   return customFields;
 }
 
