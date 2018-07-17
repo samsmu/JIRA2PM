@@ -428,6 +428,29 @@ function _fetchJira(page) {
   return JSON.stringify({continuePaging: continuePaging, maxResults: maxResults, curResult: curResult});
 }
 
+function tryAndRepeat(func, error_msg) {
+  var errorCount = 0;
+  var operationSuccess = false;
+  var caughtError = false;
+  
+  while (errorCount < 3 && !operationSuccess) {
+    operationSuccess = false;
+    caughtError = false;
+    try {
+      func();
+    } 
+    catch (e) {
+      errorCount += 1;
+      caughtError = true;
+    }
+    
+    operationSuccess = !caughtError;
+  }
+  
+  if (errorCount >= 3)
+    throw (error_msg);
+}
+
 function appendJira_(data, fromIndex) {
   var issues = [];
 
@@ -450,8 +473,10 @@ function appendJira_(data, fromIndex) {
     }
 
   // Delete old values
-  if (!isNaN(fromIndex))
-    sheet.getRange(fromIndex + 2, 1, sheet.getLastRow() - fromIndex - 1, jqlOptions.fields.length + 1).clear();
+  tryAndRepeat( function() {
+    if (!isNaN(fromIndex))
+      sheet.getRange(fromIndex + 2, 1, sheet.getLastRow() - fromIndex - 1, jqlOptions.fields.length + 1).clear();
+  }, 'Error while removing old values from the sheet');
   /*
   if (displayOptions.sortByParents) {
     var sortedList = sortIssueList(issues);
@@ -470,12 +495,12 @@ function appendJira_(data, fromIndex) {
     var range = sheet.getRange(lastRow, i + 1, issues.length, 1);
 
     if (format == 'text')
-      range.setNumberFormat('@')
+      tryAndRepeat(function() { range.setNumberFormat('@') }, 'Error while setting format for cells');
 
     if (slice[0][0] == '=')
-      range.setFormulas(slice);
+      tryAndRepeat(function() { range.setFormulas(slice); }, 'Error while setting formulas to cells');
     else
-      range.setValues(slice);
+      tryAndRepeat(function() { range.setValues(slice); }, 'Error while setting values to cells');
   }
 }
 
