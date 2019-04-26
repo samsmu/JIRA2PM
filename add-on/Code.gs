@@ -173,8 +173,9 @@ function getCurrentRangeValues() {
 
 function convertKeysToLinks(keysJSON) {
   var keys = JSON.parse(keysJSON);
-  var connectOptions = JSON.parse(PropertiesService.getUserProperties().getProperty('connectOptions'));
-
+  
+  var connectOptions = JSON.parse(getOptions('connectOptions'));
+  
   if (!connectOptions.baseURL)
     throw ("No connection options were found. Please connect to JIRA first");
 
