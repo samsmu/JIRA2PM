@@ -27,13 +27,28 @@
   <body>
     <div class="sidebar branding-below">
       <form id="mainform">
+
         <div class="form-group">
-          <label for="username">JIRA Username</label>
+          <div class="btn-group btn-group-toggle" id="jira-type" data-toggle="buttons">
+            <label class="btn btn-info active">
+              <input type="radio" name="options" value="hosted" autocomplete="off" checked> Hosted
+            </label>
+            <label class="btn btn-info">
+              <input type="radio" name="options" value="cloud" autocomplete="off"> Cloud
+            </label>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="username" id="username-label">JIRA Username</label>
           <input type="text" class="form-control" id="username">
         </div>
         
         <div class="form-group">
-          <label for="password">JIRA Password</label>
+          <label for="password" id="password-label">JIRA Password</label>
+          <a id="token-info" href="https://confluence.atlassian.com/cloud/api-tokens-938839638.html" target="_blank" style="display:none">
+            <i class="material-icons pull-right">info</i>
+          </a>
           <input type="password" class="form-control" id="password">
         </div>
         
@@ -79,6 +94,21 @@
           this.disabled = true;
           google.script.run.withUserObject(this).showBuildJqlQuery();
         });
+        $('#jira-type input[type=radio]').change(function(){
+          switch($(this).val()) {
+            default:
+            case 'hosted':
+              $('#username-label').text('JIRA Username');
+              $('#password-label').text('JIRA Password');
+              $('#token-info').hide()
+              break;
+            case 'cloud':
+              $('#username-label').text('JIRA Email');
+              $('#password-label').text('JIRA API Token');
+              $('#token-info').show()
+              break;
+          }
+        })
         google.script.run.withSuccessHandler(loadPreferences)
             .withFailureHandler(showError).getOptions('connectOptions');
         initFieldsCheck();
